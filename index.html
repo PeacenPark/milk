@@ -32,31 +32,25 @@
   <span id="dday" style="font-size: 16px; color: #555;"></span>
 </h2>
 
-<div id="currentTime" style="text-align:center; font-size: 20px; margin-bottom: 10px;"></div>
-
 <select id="dateSelect" onchange="loadLogs()"></select>
 <select id="baby" onchange="loadLogs(); drawChart();">
   <option value="박 온">박 온</option>
   <option value="박 겸">박 겸</option>
 </select>
 
-<table id="infoTable">
-<tr><td><span id="nextFeedTime">-</span></td></tr>
-</table>
+<table id="infoTable"><tr><td><span id="nextFeedTime">-</span></td></tr></table>
 
 <div style="display:flex; gap:10px;">
   <input type="date" id="inputDate" style="flex:1;">
   <input type="time" id="time" style="flex:1;">
 </div>
 
-<!-- 수유량 드롭다운 -->
 <div style="display: flex; align-items: center; gap: 10px;">
-  <label for="feedAmount" style="white-space: nowrap;">수유량</label>
-  <select id="feedAmount" style="flex-grow: 1; width: 100%; font-size: 25px; padding: 10px;">
-    <option value="" selected>수유량 (mL)</option>
+  <select id="feedAmount" style="flex-grow: 1; font-size: 25px; padding: 10px;">
+    <option value="">수유량 (mL)</option>
     ${[...Array(18)].map((_, i) => {
-      const value = 30 + i * 10;
-      return `<option value="${value}" ${value === 160 ? "selected" : ""}>${value} mL</option>`;
+      const val = 30 + i * 10;
+      return `<option value="${val}" ${val === 160 ? 'selected' : ''}>${val} mL</option>`;
     }).join('')}
   </select>
 </div>
@@ -75,17 +69,13 @@
 <div id="dailySummaryBox"></div>
 
 <table>
-  <thead>
-    <tr><th>몸무게(kg)</th><th>체온(℃)</th><th>목욕</th><th>저장</th></tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><input type="number" id="weight" step="0.1" /></td>
-      <td><input type="number" id="temperature" step="0.1" /></td>
-      <td><input type="checkbox" id="bathed" /></td>
-      <td><button onclick="saveDailyNote()">저장</button></td>
-    </tr>
-  </tbody>
+  <thead><tr><th>몸무게(kg)</th><th>체온(℃)</th><th>목욕</th><th>저장</th></tr></thead>
+  <tbody><tr>
+    <td><input type="number" id="weight" step="0.1" /></td>
+    <td><input type="number" id="temperature" step="0.1" /></td>
+    <td><input type="checkbox" id="bathed" /></td>
+    <td><button onclick="saveDailyNote()">저장</button></td>
+  </tr></tbody>
 </table>
 
 <input type="text" id="memo" placeholder="메모를 입력하세요" />
@@ -98,6 +88,13 @@
 <canvas id="feedChart" height="250"></canvas>
 
 <script>
+function to12HourFormat(timeStr) {
+  const [hour, minute] = timeStr.split(':').map(Number);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${ampm} ${hour12}:${String(minute).padStart(2, '0')}`;
+}
+
 const firebaseConfig = {
   apiKey: "AIzaSyC4qCMBx1Xv5HpMXReTQjVy7uioihMY_Vw",
   authDomain: "milk-3aac7.firebaseapp.com",
@@ -135,24 +132,22 @@ function updateCurrentTime() {
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
-  const currentTimeEl = document.getElementById('currentTime');
-  if (currentTimeEl) {
-    currentTimeEl.textContent = `현재 시간: ${to12HourFormat(`${hh}:${mm}`)}`;
-  }
+  const currentTime = to12HourFormat(`${hh}:${mm}`);
 }
 
-function to12HourFormat(timeStr) {
-  const [hour, minute] = timeStr.split(':').map(Number);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const hour12 = hour % 12 || 12;
-  return `${ampm} ${hour12}:${String(minute).padStart(2, '0')}`;
+function setNextFeedTimeLabel(timeStr) {
+  const [h, m] = timeStr.split(':').map(Number);
+  const dt = new Date();
+  dt.setHours(h);
+  dt.setMinutes(m + 210);
+  const today = new Date().toISOString().split('T')[0];
+  const label = (new Date().toISOString().split('T')[0] === today) ? `다음 수유 시간: ${to12HourFormat(String(dt.getHours()).padStart(2, '0') + ':' + String(dt.getMinutes()).padStart(2, '0'))}` : "다음 수유 시간: -";
+  document.getElementById('nextFeedTime').textContent = label;
 }
 
 function setNowTime() {
   const now = new Date();
-  document.getElementById('time').value =
-    String(now.getHours()).padStart(2, '0') + ':' +
-    String(now.getMinutes()).padStart(2, '0');
+  document.getElementById('time').value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
 }
 
 async function saveLog() {
@@ -188,10 +183,6 @@ async function saveLog() {
 async function saveDailyNote() {
   const baby = document.getElementById('baby').value;
   const date = document.getElementById('dateSelect').value;
-  if (!date) {
-    alert("날짜가 선택되지 않았습니다.");
-    return;
-  }
   const weight = parseFloat(document.getElementById('weight').value) || null;
   const temperature = parseFloat(document.getElementById('temperature').value) || null;
   const bathed = document.getElementById('bathed').checked;
@@ -230,31 +221,26 @@ function loadLogs() {
   db.collection("users").doc(userId).collection("logs").doc(date).collection(baby)
     .orderBy("createdAt", "desc")
     .onSnapshot(async snap => {
-      let totalFeed = 0, poopCount = 0, peeCount = 0;
-      let latestFeedTime = null;
+      let totalFeed = 0, poopCount = 0, peeCount = 0, latestFeedTime = null;
       tbody.innerHTML = '';
+
       snap.forEach(doc => {
         const d = doc.data();
         const feedAmount = parseInt(d.feedAmount);
         if (!isNaN(feedAmount)) {
           totalFeed += feedAmount;
-          if (feedAmount > 0 && !latestFeedTime) {
-            latestFeedTime = d.time;
-          }
+          if (feedAmount > 0 && !latestFeedTime) latestFeedTime = d.time;
         }
         if (d.poopType) poopCount++;
         if (d.pee) peeCount++;
 
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${to12HourFormat(d.time)}</td>
-          <td>${isNaN(feedAmount) ? '-' : feedAmount + 'mL'}</td>
-          <td>${d.poopType || '-'}</td>
-          <td>${d.pee ? 'O' : ''}</td>
-          <td>
-            <button onclick="editLog('${doc.id}')">✏️</button>
-            <button onclick="deleteLog('${doc.id}')">🗑</button>
-          </td>`;
+        tr.innerHTML = `<td>${to12HourFormat(d.time)}</td>
+                        <td>${isNaN(feedAmount) ? '-' : feedAmount + 'mL'}</td>
+                        <td>${d.poopType || '-'}</td>
+                        <td>${d.pee ? 'O' : ''}</td>
+                        <td><button onclick="editLog('${doc.id}')">✏️</button>
+                            <button onclick="deleteLog('${doc.id}')">🗑</button></td>`;
         tbody.appendChild(tr);
       });
 
@@ -264,7 +250,6 @@ function loadLogs() {
       if (isToday && latestFeedTime) {
         setNextFeedTimeLabel(latestFeedTime);
       } else {
-        document.getElementById('feedAmount').placeholder = "수유량 (mL)";
         document.getElementById('nextFeedTime').textContent = "다음 수유 시간: -";
       }
 
@@ -282,16 +267,6 @@ function loadLogs() {
         document.getElementById('memo').value = '';
       }
     });
-}
-
-function setNextFeedTimeLabel(timeStr) {
-  const [h, m] = timeStr.split(':').map(Number);
-  const dt = new Date();
-  dt.setHours(h);
-  dt.setMinutes(m + 210);
-  const hh = String(dt.getHours()).padStart(2, '0');
-  const mm = String(dt.getMinutes()).padStart(2, '0');
-  document.getElementById('nextFeedTime').textContent = `다음 수유 시간: ${to12HourFormat(`${hh}:${mm}`)}`;
 }
 
 async function drawChart() {
@@ -353,7 +328,7 @@ async function deleteLog(id) {
   const baby = document.getElementById('baby').value;
   const date = document.getElementById('dateSelect').value;
   await db.collection("users").doc(userId).collection("logs").doc(date).collection(baby).doc(id).delete();
-  loadLogs();
+  loadLogs(); // 즉시 반영
 }
 </script>
 </body>
