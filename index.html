@@ -5,229 +5,469 @@
   <title>온,겸 수유일지</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="theme-color" content="#4caf50">
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: sans-serif; font-size: 18px; padding: 20px; max-width: 600px; margin: auto; background: #f5f5f5; }
-    label, select, input, textarea, button { font-size: 18px; width: 100%; margin-top: 10px; padding: 10px; box-sizing: border-box; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #fff; }
-    th, td { border: 1px solid #ccc; padding: 8px; font-size: 16px; text-align: center; }
-    input[type="checkbox"] { width: auto; }
-    #dailySummaryBox { margin-top: 20px; background: #e0f7fa; padding: 10px; border-radius: 5px; }
-    #infoTable { width: 100%; margin-top: 15px; border-collapse: collapse; background: #e8f5e9; border: 1px solid #c8e6c9; font-size: 20px; text-align: center; }
-    #infoTable td { padding: 10px; border: 1px solid #c8e6c9; }
-    #infoTable span { font-weight: bold; color: #2e7d32; font-size: 20px; }
-    #dateSelect { position: absolute; top: 10px; right: 10px; width: 120px; font-size: 14px; }
-    #baby { width: 100px; font-size: 25px; }
-    #weight, #temperature { width: 80px; height: 40px; }
-    h2 { text-align: center; font-size: 30px; font-weight: bold; }
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #f5f5f5;
+      font-size: 22px;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      background: white;
+      flex-wrap: wrap;
+    }
+    #titleBox h1 {
+      font-size: 32px;
+      margin: 0;
+      color: #333;
+    }
+    #dday {
+      font-size: 20px;
+      color: #666;
+    }
+    #dateSelect {
+      font-size: 20px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+    }
+    #selectedBabyBox {
+      text-align: center;
+      margin-top: 20px;
+    }
+    #selectedBabyBox img {
+      height: 200px;
+      object-fit: contain;
+      border-radius: 10px;
+      vertical-align: middle;
+      margin-right: 10px;
+    }
+    #selectedBabyName {
+      font-size: 36px;
+      font-weight: bold;
+      color: #2e7d32;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    select, input, button, textarea {
+      font-size: 22px;
+      padding: 12px;
+      margin-top: 10px;
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      background: linear-gradient(45deg, #4caf50, #66bb6a);
+      color: white;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: linear-gradient(45deg, #388e3c, #4caf50);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 12px;
+      text-align: center;
+      font-size: 20px;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .row > * {
+      flex: 1;
+    }
+    #infoTable td {
+      font-size: 24px;
+      color: #2e7d32;
+      font-weight: bold;
+      padding: 16px;
+    }
+    canvas {
+      margin-top: 30px;
+    }
+    .feedTimeHighlight {
+  font-size: 36px;
+  font-weight: bold;
+  color: green;
+}
+.highlightFeed {
+  font-size: 20px;
+  font-weight: bold;
+  color: #ff5722;
+}
   </style>
 </head>
-<body onload="updateHeaderInfo()">
+<body onload="initApp()">
+  <header>
+    <div id="titleBox">
+      <h1>온, 겸 수유일지</h1>
+      <div id="dday"></div>
+    </div>
+    <select id="dateSelect" onchange="loadLogs()"></select>
+  </header>
 
-<h2 id="titleArea">
-  온,겸 수유일지
-  <span id="dday" style="font-size: 16px; color: #555;"></span>
-</h2>
+  <div id="selectedBabyBox">
+    <img id="babyImage" src="" alt="" />
+    <span id="selectedBabyName">박 온</span>
+  </div>
 
-<div id="currentTime" style="text-align:center; font-size: 20px; margin-bottom: 10px;"></div>
+  <table id="infoTable"><tr><td><span id="nextFeedTime">다음 수유 시간: -</span></td></tr></table>
 
-<select id="dateSelect" onchange="loadLogs()"></select>
-<select id="baby" onchange="loadLogs(); drawChart();">
+  <div id="container" style="max-width: 1200px; margin: auto; padding: 20px;">
+    <select id="baby" onchange="updateBabyName(); loadLogs(); drawChart();" style="
+  font-size: 28px;
+  padding: 14px;
+  margin-top: 20px;
+  width: 100%;
+  border-radius: 12px;
+  border: 2px solid #4caf50;
+  background: #e8f5e9;
+  color: #2e7d32;
+  font-weight: bold;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+  appearance: none;
+">
   <option value="박 온">박 온</option>
   <option value="박 겸">박 겸</option>
 </select>
-
-<table id="infoTable">
-<tr><td><span id="nextFeedTime">-</span></td></tr>
-</table>
-
-<div style="display:flex; gap:10px;">
-  <input type="date" id="inputDate" style="flex:1;">
-  <input type="time" id="time" style="flex:1;">
-</div>
-
-<select id="feedAmount">
-  <option value="">수유량 (mL)</option>
-  ${[...Array(18)].map((_, i) => {
-    const value = 30 + i * 10;
-    return `<option value="${value}" ${value === 160 ? "selected" : ""}>${value} mL</option>`;
-  }).join('')}
-</select>
-
-<select id="poopType">
-  <option value="">대변</option>
-  <option value="정상">정상</option>
-  <option value="된변">된변</option>
-  <option value="묽은변">묽은변</option>
-  <option value="설사">설사</option>
-</select>
-
-<label><input type="checkbox" id="pee" /> 소변</label>
-<button onclick="saveLog()">기록 저장</button>
-
-<div id="dailySummaryBox"></div>
-
-<table>
-  <thead>
-    <tr><th>몸무게(kg)</th><th>체온(℃)</th><th>목욕</th><th>저장</th></tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><input type="number" id="weight" step="0.1" /></td>
-      <td><input type="number" id="temperature" step="0.1" /></td>
-      <td><input type="checkbox" id="bathed" /></td>
-      <td><button onclick="saveDailyNote()">저장</button></td>
-    </tr>
-  </tbody>
-</table>
-
-<input type="text" id="memo" placeholder="메모를 입력하세요" />
-
-<table>
-  <thead><tr><th>시간</th><th>수유량</th><th>대변</th><th>소변</th><th>관리</th></tr></thead>
-  <tbody id="logTable"><tr><td colspan="5">기록 없음</td></tr></tbody>
-</table>
-
-<canvas id="feedChart" height="250"></canvas>
-
+    <div class="row">
+      <input type="date" id="inputDate">
+      <input type="time" id="time">
+    </div>
+    <select id="feedAmount">
+      <option value="">수유량 (mL)</option>
+      <option value="30">30 mL</option>
+      <option value="40">40 mL</option>
+      <option value="50">50 mL</option>
+      <option value="60">60 mL</option>
+      <option value="70">70 mL</option>
+      <option value="80">80 mL</option>
+      <option value="90">90 mL</option>
+      <option value="100">100 mL</option>
+      <option value="110">110 mL</option>
+      <option value="120">120 mL</option>
+      <option value="130">130 mL</option>
+      <option value="140">140 mL</option>
+      <option value="150">150 mL</option>
+      <option value="160">160 mL</option>
+      <option value="170">170 mL</option>
+      <option value="180">180 mL</option>
+      <option value="190">190 mL</option>
+      <option value="200">200 mL</option>
+    </select>
+    <select id="poopType">
+      <option value="">대변</option>
+      <option value="정상">정상</option>
+      <option value="된변">된변</option>
+      <option value="묽은변">묽은변</option>
+      <option value="설사">설사</option>
+    </select>
+    <label style="font-size: 20px;"><input type="checkbox" id="pee" /> 소변</label>
+    <button onclick="saveLog()">기록 저장</button>
+    <h3 style="margin-top:40px;">하루 일지</h3>
+    <table>
+      <thead><tr><th>몸무게</th><th>체온</th><th>목욕</th><th>저장</th></tr></thead>
+      <tbody><tr>
+        <td><input type="number" id="weight" step="0.1" placeholder="kg"></td>
+        <td><input type="number" id="temperature" step="0.1" placeholder="℃"></td>
+        <td><input type="checkbox" id="bathed" style="transform: scale(1.5);"></td>
+        <td><button onclick="saveDailyNote()">저장</button></td>
+      </tr></tbody>
+    </table>
+    <textarea id="memo" placeholder="메모를 입력하세요" style="margin-top:10px;"></textarea>
+    <div id="dailySummaryBox" style="background:#e0f7fa; font-size:20px; padding:16px; border-radius:10px; margin-top:30px;"></div>
+    <table>
+      <thead><tr><th>시간</th><th>수유량</th><th>대변</th><th>소변</th><th>관리</th></tr></thead>
+      <tbody id="logTable"><tr><td colspan="5">기록 없음</td></tr></tbody>
+    </table>
+    <canvas id="feedChart" height="250"></canvas>
+  </div>
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyC4qCMBx1Xv5HpMXReTQjVy7uioihMY_Vw",
-  authDomain: "milk-3aac7.firebaseapp.com",
-  projectId: "milk-3aac7",
-  storageBucket: "milk-3aac7.appspot.com",
-  messagingSenderId: "429081947703",
-  appId: "1:429081947703:web:2bbaf7160a4936434859b2"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-let userId = "", chartInstance = null;
-
-firebase.auth().signInAnonymously().then(res => {
-  userId = res.user.uid;
-  loadDateList().then(() => {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('dateSelect').value = today;
-    document.getElementById('inputDate').value = today;
-    setNowTime();
-    loadLogs();
-    drawChart();
-  });
-});
-
-function updateHeaderInfo() {
-  const ddayBase = new Date("2025-01-06");
-  const today = new Date();
-  const diff = Math.floor((today - ddayBase) / (1000 * 60 * 60 * 24));
-  document.getElementById('dday').textContent = ` - 생후 ${diff}일`;
-  updateCurrentTime();
-  setInterval(updateCurrentTime, 60000);
+function initApp() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('inputDate').value = today;
+  document.getElementById('time').value = getNowTime();
+  updateDday();
+  updateDateSelect();
+  updateBabyName();
+  loadLogs();
+  drawChart();
 }
 
-function updateCurrentTime() {
+function updateDday() {
+  const base = new Date("2025-01-06");
+  const today = new Date();
+  const diff = Math.floor((today - base) / (1000 * 60 * 60 * 24));
+  document.getElementById('dday').textContent = `생후 ${diff}일`;
+}
+
+function getNowTime() {
   const now = new Date();
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  const currentTimeEl = document.getElementById('currentTime');
-  if (currentTimeEl) {
-    currentTimeEl.textContent = `현재 시간: ${to12HourFormat(`${hh}:${mm}`)}`;
-  }
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
 function to12HourFormat(timeStr) {
-  const [hour, minute] = timeStr.split(':').map(Number);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const hour12 = hour % 12 || 12;
-  return `${ampm} ${hour12}:${String(minute).padStart(2, '0')}`;
+  const [h, m] = timeStr.split(':').map(Number);
+  const ampm = h >= 12 ? '오후' : '오전';
+  const hour12 = h % 12 || 12;
+  return `${ampm} ${hour12}:${String(m).padStart(2, '0')}`;
 }
 
-function setNowTime() {
-  const now = new Date();
-  document.getElementById('time').value =
-    String(now.getHours()).padStart(2, '0') + ':' +
-    String(now.getMinutes()).padStart(2, '0');
-}
-
-async function saveLog() {
+function updateBabyName() {
   const baby = document.getElementById('baby').value;
+  document.getElementById('selectedBabyName').textContent = baby;
+  const img = document.getElementById('babyImage');
+  img.src = baby === '박 온' ? 'baby_lebron.png' : 'baby_messi.png';
+}
+
+function setNextFeedTimeLabel(timeStr) {
+  const [h, m] = timeStr.split(':').map(Number);
+  const dt = new Date();
+  dt.setHours(h);
+  dt.setMinutes(m + 210); // 3시간 30분 후
+  const hh = String(dt.getHours()).padStart(2, '0');
+  const mm = String(dt.getMinutes()).padStart(2, '0');
+  const timeText = to12HourFormat(`${hh}:${mm}`);
+
+  document.getElementById('nextFeedTime').innerHTML =
+    `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
+}
+function getData() {
+  return JSON.parse(localStorage.getItem('babyLogs') || '{}');
+}
+
+function saveData(data) {
+  localStorage.setItem('babyLogs', JSON.stringify(data));
+}
+
+function saveLog() {
   const date = document.getElementById('inputDate').value;
-  if (!date) {
-    alert("날짜가 선택되지 않았습니다.");
-    return;
-  }
   const time = document.getElementById('time').value;
+  const baby = document.getElementById('baby').value;
   const feedAmount = parseInt(document.getElementById('feedAmount').value) || 0;
   const poopType = document.getElementById('poopType').value;
   const pee = document.getElementById('pee').checked;
 
   if (feedAmount === 0 && !poopType && !pee) {
-    alert("수유량 또는 대변/소변 상태 중 하나 이상을 입력해주세요.");
+    alert("수유량 또는 대변/소변 상태 중 하나 이상 입력 필요");
     return;
   }
 
-  await db.collection("users").doc(userId).collection("logs").doc(date).collection(baby).add({
-    time, feedAmount, poopType, pee, createdAt: new Date()
-  });
+  const data = getData();
+  if (!data[date]) data[date] = {};
+  if (!data[date][baby]) data[date][baby] = { logs: [], daily: {} };
 
-  const today = new Date().toISOString().split('T')[0];
-  if (date === today && feedAmount > 0) {
-    setNextFeedTimeLabel(time);
-  }
+  data[date][baby].logs.unshift({ time, feedAmount, poopType, pee });
+  saveData(data);
+  updateDateSelect(); // ✅ 저장 후 날짜 목록 갱신
 
-  document.getElementById('feedAmount').value = '';
+  // 입력 초기화
+  document.getElementById('feedAmount').selectedIndex = 0;
   document.getElementById('poopType').value = '';
   document.getElementById('pee').checked = false;
-  setNowTime();
+  document.getElementById('time').value = getNowTime();
+  document.getElementById('dateSelect').value = date;
+
+  // 다음 수유 시간 표시 (먼저 실행)
+  if (date === new Date().toISOString().split('T')[0] && feedAmount > 0) {
+    setNextFeedTimeLabel(time);
+  }
+// 최신 수유 시간 반영
+  if (date === new Date().toISOString().split('T')[0] && latestFeedTime)
+  // 테이블 즉시 갱신
+  document.getElementById('logTable').innerHTML = '';
   loadLogs();
   drawChart();
 }
-
-async function saveDailyNote() {
-  const baby = document.getElementById('baby').value;
+function saveDailyNote() {
   const date = document.getElementById('dateSelect').value;
-  if (!date) {
-    alert("날짜가 선택되지 않았습니다.");
-    return;
-  }
+  const baby = document.getElementById('baby').value;
   const weight = parseFloat(document.getElementById('weight').value) || null;
   const temperature = parseFloat(document.getElementById('temperature').value) || null;
   const bathed = document.getElementById('bathed').checked;
   const memo = document.getElementById('memo').value;
 
-  const ref = db.collection("users").doc(userId).collection("daily").doc(date);
-  const doc = await ref.get();
-  const data = doc.exists ? doc.data() : {};
-  data[baby] = { weight, temperature, bathed, memo };
-  await ref.set(data);
-  alert("하루 일지 저장 완료!");
+  const data = getData();
+  if (!data[date]) data[date] = {};
+  if (!data[date][baby]) data[date][baby] = { logs: [], daily: {} };
+
+  data[date][baby].daily = { weight, temperature, bathed, memo };
+  saveData(data);
+  loadLogs(); drawChart();
 }
 
-async function loadDateList() {
+function deleteLog(date, baby, index) {
+  const data = getData();
+  data[date][baby].logs.splice(index, 1);
+  saveData(data);
+  document.getElementById('dateSelect').value = date;
+  document.getElementById('logTable').innerHTML = '';
+  loadLogs(); drawChart();
+}
+
+function editLog(date, baby, index) {
+  const data = getData();
+  const log = data[date][baby].logs[index];
+  const newFeed = prompt("수유량 (mL)", log.feedAmount);
+  const newPoop = prompt("대변 상태", log.poopType || '');
+  const newPee = confirm("소변 있었나요?");
+  data[date][baby].logs[index] = {
+    ...log,
+    feedAmount: parseInt(newFeed) || 0,
+    poopType: newPoop,
+    pee: newPee
+  };
+  saveData(data);
+  document.getElementById('dateSelect').value = date;
+  document.getElementById('logTable').innerHTML = '';
+  loadLogs(); drawChart();
+}
+function loadLogs() {
+  const date = document.getElementById('dateSelect').value;
+  const baby = document.getElementById('baby').value;
+  const data = getData();
+  const logs = (data[date] && data[date][baby]?.logs) || [];
+  const note = (data[date] && data[date][baby]?.daily) || {};
+
+  document.getElementById('weight').value = note.weight || '';
+document.getElementById('temperature').value = note.temperature || '';
+document.getElementById('bathed').checked = note.bathed || false;
+document.getElementById('memo').value = note.memo || '';
+
+  const tbody = document.getElementById('logTable');
+  tbody.innerHTML = '';
+
+  let totalFeed = 0, poopCount = 0, peeCount = 0;
+  let latestFeedTime = null;
+
+  logs.forEach((entry, i) => {
+    const amt = parseInt(entry.feedAmount);
+    if (!isNaN(amt)) {
+      totalFeed += amt;
+      if (!latestFeedTime && amt > 0) latestFeedTime = entry.time;
+    }
+    if (entry.poopType) poopCount++;
+    if (entry.pee) peeCount++;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${to12HourFormat(entry.time)}</td>
+      <td>${amt ? amt + 'mL' : '-'}</td>
+      <td>${entry.poopType || '-'}</td>
+      <td>${entry.pee ? 'O' : ''}</td>
+      <td>
+        <button onclick="editLog('${date}', '${baby}', ${i})">✏️</button>
+        <button onclick="deleteLog('${date}', '${baby}', ${i})">🗑</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('dailySummaryBox').innerHTML =
+  `<strong>${date} ${baby} 통계</strong><br>
+   수유량: <span class="highlightFeed">${totalFeed}mL</span>, 
+   대변 ${poopCount}회, 소변 ${peeCount}회` +
+  (note.weight ? `<br>체중: ${note.weight}kg` : '');
+
+    setNextFeedTimeLabel(latestFeedTime);
+  else
+    document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
+}
+
+function drawChart() {
+  const baby = document.getElementById('baby').value;
+  const data = getData();
+  const dateList = Object.keys(data).sort();
+  const feedTotals = [], weightData = [];
+
+  dateList.forEach(date => {
+    const logs = data[date][baby]?.logs || [];
+    const daily = data[date][baby]?.daily || {};
+    const total = logs.reduce((sum, l) => {
+      const v = parseInt(l.feedAmount);
+      return isNaN(v) ? sum : sum + v;
+    }, 0);
+    feedTotals.push(total);
+    weightData.push(daily.weight ?? null);
+  });
+
+  const ctx = document.getElementById('feedChart').getContext('2d');
+  if (window.chartInstance) window.chartInstance.destroy();
+  window.chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dateList,
+      datasets: [
+        {
+          label: `${baby} 수유량 (mL)`,
+          data: feedTotals,
+          borderColor: 'rgba(75,192,192,1)',
+          backgroundColor: 'rgba(75,192,192,0.2)',
+          yAxisID: 'y1',
+          tension: 0.3
+        },
+        {
+          label: `${baby} 체중 (kg)`,
+          data: weightData,
+          borderColor: 'rgba(255,99,132,1)',
+          backgroundColor: 'rgba(255,99,132,0.2)',
+          yAxisID: 'y2',
+          tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      stacked: false,
+      scales: {
+        y1: {
+          type: 'linear',
+          position: 'left',
+          title: { display: true, text: '수유량 (mL)' },
+          beginAtZero: true
+        },
+        y2: {
+          type: 'linear',
+          position: 'right',
+          title: { display: true, text: '체중 (kg)' },
+          beginAtZero: false,
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
+}
+
+function updateDateSelect() {
   const select = document.getElementById('dateSelect');
+  const data = getData();
+  const dates = Object.keys(data).sort().reverse();
   select.innerHTML = '';
-  const snapshot = await db.collection("users").doc(userId).collection("logs").get();
-  const dates = snapshot.docs.map(doc => doc.id).sort().reverse();
   dates.forEach(date => {
     const opt = document.createElement('option');
     opt.value = date;
     opt.textContent = date;
     select.appendChild(opt);
   });
-}
-
-function loadLogs() {
-  const baby = document.getElementById('baby').value;
-  const date = document.getElementById('dateSelect').value;
-  if (!date) return; // 방어 코드 추가
-  const today = new Date().toISOString().split('T')[0];
-  const isToday = (date === today);
-  document.getElementById('inputDate').value = date;
-  const tbody = document.getElementById('logTable');
-  tbody.innerHTML = '';
-  // ... 나머지 동일
 }
 </script>
 </body>
