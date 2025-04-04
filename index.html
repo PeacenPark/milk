@@ -142,26 +142,26 @@
       <input type="time" id="time">
     </div>
     <select id="feedAmount">
-  <option value="">수유량 (mL)</option>
-  <option value="30">30 mL</option>
-  <option value="40">40 mL</option>
-  <option value="50">50 mL</option>
-  <option value="60">60 mL</option>
-  <option value="70">70 mL</option>
-  <option value="80">80 mL</option>
-  <option value="90">90 mL</option>
-  <option value="100">100 mL</option>
-  <option value="110">110 mL</option>
-  <option value="120">120 mL</option>
-  <option value="130">130 mL</option>
-  <option value="140">140 mL</option>
-  <option value="150">150 mL</option>
-  <option value="160">160 mL</option>
-  <option value="170">170 mL</option>
-  <option value="180">180 mL</option>
-  <option value="190">190 mL</option>
-  <option value="200">200 mL</option>
-</select>
+      <option value="">수유량 (mL)</option>
+      <option value="30">30 mL</option>
+      <option value="40">40 mL</option>
+      <option value="50">50 mL</option>
+      <option value="60">60 mL</option>
+      <option value="70">70 mL</option>
+      <option value="80">80 mL</option>
+      <option value="90">90 mL</option>
+      <option value="100">100 mL</option>
+      <option value="110">110 mL</option>
+      <option value="120">120 mL</option>
+      <option value="130">130 mL</option>
+      <option value="140">140 mL</option>
+      <option value="150">150 mL</option>
+      <option value="160">160 mL</option>
+      <option value="170">170 mL</option>
+      <option value="180">180 mL</option>
+      <option value="190">190 mL</option>
+      <option value="200">200 mL</option>
+    </select>
     <select id="poopType">
       <option value="">대변</option>
       <option value="정상">정상</option>
@@ -171,6 +171,7 @@
     </select>
     <label style="font-size: 20px;"><input type="checkbox" id="pee" /> 소변</label>
     <button onclick="saveLog()">기록 저장</button>
+
     <h3 style="margin-top:40px;">하루 일지</h3>
     <table>
       <thead><tr><th>몸무게</th><th>체온</th><th>목욕</th><th>저장</th></tr></thead>
@@ -201,13 +202,6 @@ function initApp() {
   drawChart();
 }
 
-function updateDday() {
-  const base = new Date("2025-01-06");
-  const today = new Date();
-  const diff = Math.floor((today - base) / (1000 * 60 * 60 * 24));
-  document.getElementById('dday').textContent = `생후 ${diff}일`;
-}
-
 function getNowTime() {
   const now = new Date();
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -218,6 +212,13 @@ function to12HourFormat(timeStr) {
   const ampm = h >= 12 ? '오후' : '오전';
   const hour12 = h % 12 || 12;
   return `${ampm} ${hour12}:${String(m).padStart(2, '0')}`;
+}
+
+function updateDday() {
+  const base = new Date("2025-01-06");
+  const today = new Date();
+  const diff = Math.floor((today - base) / (1000 * 60 * 60 * 24));
+  document.getElementById('dday').textContent = `생후 ${diff}일`;
 }
 
 function updateBabyName() {
@@ -235,12 +236,12 @@ function setNextFeedTimeLabel(timeStr) {
   const hh = String(dt.getHours()).padStart(2, '0');
   const mm = String(dt.getMinutes()).padStart(2, '0');
   const timeText = to12HourFormat(`${hh}:${mm}`);
-  document.getElementById('nextFeedTime').innerHTML = `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
+  document.getElementById('nextFeedTime').innerHTML =
+    `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
 }
 function getData() {
   return JSON.parse(localStorage.getItem('babyLogs') || '{}');
 }
-
 function saveData(data) {
   localStorage.setItem('babyLogs', JSON.stringify(data));
 }
@@ -261,26 +262,30 @@ function saveLog() {
   const data = getData();
   if (!data[date]) data[date] = {};
   if (!data[date][baby]) data[date][baby] = { logs: [], daily: {} };
-
   data[date][baby].logs.unshift({ time, feedAmount, poopType, pee });
   saveData(data);
+updateDateSelect();
 
-  updateDateSelect(); // 과거 날짜 반영
-  document.getElementById('feedAmount').selectedIndex = 0;
-  document.getElementById('poopType').value = '';
-  document.getElementById('pee').checked = false;
-  document.getElementById('time').value = getNowTime();
+// ✅ 선택값 설정은 다음 틱으로 넘겨서 보장
+setTimeout(() => {
   document.getElementById('dateSelect').value = date;
+}, 0);
 
   if (date === new Date().toISOString().split('T')[0] && feedAmount > 0) {
     setNextFeedTimeLabel(time);
   }
 
-  document.getElementById('logTable').innerHTML = '';
+  document.getElementById('feedAmount').selectedIndex = 0;
+  document.getElementById('poopType').value = '';
+  document.getElementById('pee').checked = false;
+
+  // ✅ 다시 현재 날짜/시간 설정
+  document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('time').value = getNowTime();
+
   loadLogs();
   drawChart();
 }
-
 function saveDailyNote() {
   const date = document.getElementById('dateSelect').value;
   const baby = document.getElementById('baby').value;
@@ -292,8 +297,32 @@ function saveDailyNote() {
   const data = getData();
   if (!data[date]) data[date] = {};
   if (!data[date][baby]) data[date][baby] = { logs: [], daily: {} };
-
   data[date][baby].daily = { weight, temperature, bathed, memo };
+  saveData(data);
+  loadLogs();
+  drawChart();
+}
+
+function deleteLog(date, baby, index) {
+  const data = getData();
+  data[date][baby].logs.splice(index, 1);
+  saveData(data);
+  loadLogs();
+  drawChart();
+}
+
+function editLog(date, baby, index) {
+  const data = getData();
+  const log = data[date][baby].logs[index];
+  const newFeed = prompt("수유량 (mL)", log.feedAmount);
+  const newPoop = prompt("대변 상태", log.poopType || '');
+  const newPee = confirm("소변 있었나요?");
+  data[date][baby].logs[index] = {
+    ...log,
+    feedAmount: parseInt(newFeed) || 0,
+    poopType: newPoop,
+    pee: newPee
+  };
   saveData(data);
   loadLogs();
   drawChart();
@@ -305,7 +334,6 @@ function loadLogs() {
   const logs = (data[date] && data[date][baby]?.logs) || [];
   const note = (data[date] && data[date][baby]?.daily) || {};
 
-  // 하루일지 입력란 초기화 또는 불러오기
   if (note) {
     document.getElementById('weight').value = note.weight || '';
     document.getElementById('temperature').value = note.temperature || '';
@@ -358,43 +386,25 @@ function loadLogs() {
     document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
 }
 
-function deleteLog(date, baby, index) {
-  const data = getData();
-  data[date][baby].logs.splice(index, 1);
-  saveData(data);
-  loadLogs();
-  drawChart();
-}
-
-function editLog(date, baby, index) {
-  const data = getData();
-  const log = data[date][baby].logs[index];
-  const newFeed = prompt("수유량 (mL)", log.feedAmount);
-  const newPoop = prompt("대변 상태", log.poopType || '');
-  const newPee = confirm("소변 있었나요?");
-  data[date][baby].logs[index] = {
-    ...log,
-    feedAmount: parseInt(newFeed) || 0,
-    poopType: newPoop,
-    pee: newPee
-  };
-  saveData(data);
-  loadLogs();
-  drawChart();
-}
 function updateDateSelect() {
   const select = document.getElementById('dateSelect');
   const data = getData();
-  const dates = Object.keys(data).sort().reverse();
+  const dates = Object.keys(data).sort().reverse(); // 최신 날짜가 앞에 옴
   select.innerHTML = '';
+
   dates.forEach(date => {
     const opt = document.createElement('option');
     opt.value = date;
     opt.textContent = date;
     select.appendChild(opt);
   });
-}
 
+  // ✅ 가장 최근 날짜를 자동 선택
+  if (dates.length > 0) {
+    select.value = dates[0]; // 최신 날짜
+    document.getElementById('inputDate').value = dates[0];
+  }
+}
 function drawChart() {
   const baby = document.getElementById('baby').value;
   const data = getData();
