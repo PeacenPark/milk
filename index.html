@@ -397,16 +397,19 @@
   function updateDateSelect() {
   const select = document.getElementById('dateSelect');
   const today = new Date().toISOString().split('T')[0];
+
   let dates = Object.keys(sharedData)
     .filter(date => date <= today);
 
-  // 오늘 날짜가 없으면 추가
+  // ✅ 오늘 날짜가 없으면 추가
   if (!dates.includes(today)) {
     dates.push(today);
   }
 
-  dates = dates.sort().reverse(); // 최신 날짜가 위로
+  // ✅ 정렬 (최신이 위로)
+  dates = dates.sort().reverse();
 
+  // ✅ 드롭다운 옵션 채우기
   select.innerHTML = '';
   dates.forEach(date => {
     const opt = document.createElement('option');
@@ -415,8 +418,12 @@
     select.appendChild(opt);
   });
 
-  // 오늘 날짜를 기본 선택값으로 설정
-  select.value = today;
+  // ✅ 현재 선택된 값 유지, 없으면 오늘 날짜로
+  if (!select.value || !dates.includes(select.value)) {
+    select.value = today;
+  }
+
+  // ✅ inputDate도 오늘로
   document.getElementById('inputDate').value = today;
 }
 
