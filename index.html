@@ -397,31 +397,25 @@
 
   function updateDateSelect() {
   const select = document.getElementById('dateSelect');
-  const today = new Date();
-  const dateList = [];
+  const today = new Date().toISOString().split('T')[0];
+  let dates = Object.keys(sharedData || {});
+  if (!dates.includes(today)) dates.push(today);
+  dates = dates.filter(date => date <= today).sort().reverse();
 
-  // 최근 7일(또는 원하시는 범위) 생성
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    dateList.push(dateStr);
-  }
-
-  // 드롭다운 채우기
   select.innerHTML = '';
-  dateList.forEach(date => {
+  dates.forEach(date => {
     const opt = document.createElement('option');
     opt.value = date;
     opt.textContent = date;
     select.appendChild(opt);
   });
 
-  // 오늘 날짜로 기본 선택
-  select.value = today.toISOString().split('T')[0];
+  if (!select.value || !dates.includes(select.value)) {
+    select.value = today;
+  }
 
-  // inputDate도 오늘로 설정
-  document.getElementById('inputDate').value = today.toISOString().split('T')[0];
+  // ✅ 입력용 inputDate는 건드리지 마세요!
+  // document.getElementById('inputDate').value = dates[0]; ← 이거 삭제
 }
   function drawChart() {
     const baby = document.getElementById('baby').value;
