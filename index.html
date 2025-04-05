@@ -5,6 +5,7 @@
   <title>온,겸 수유일지</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#4caf50" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: 'Arial', sans-serif;
@@ -148,7 +149,7 @@
     </div>
 
     <select id="feedAmount">
-      <option value="" selected>수유량 (mL)</option>
+      <option value="">수유량 (mL)</option>
       <option value="30">30 mL</option>
       <option value="40">40 mL</option>
       <option value="50">50 mL</option>
@@ -270,12 +271,11 @@ function setNextFeedTimeLabel(timeStr) {
   const [h, m] = timeStr.split(':').map(Number);
   const dt = new Date();
   dt.setHours(h);
-  dt.setMinutes(m + 210); // 3시간 30분 후
+  dt.setMinutes(m + 210);
 
   const hh = String(dt.getHours()).padStart(2, '0');
   const mm = String(dt.getMinutes()).padStart(2, '0');
   const timeText = `${hh}:${mm}`;
-
   document.getElementById('nextFeedTime').innerHTML =
     `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
 }
@@ -297,14 +297,11 @@ function saveDailyNote() {
 
 function updateDateSelect() {
   const select = document.getElementById("dateSelect");
-  const dates = Object.keys(sharedData).sort().reverse();
-  select.innerHTML = '';
   const today = new Date().toISOString().split('T')[0];
 
-  if (!dates.includes(today)) {
-    sharedData[today] = sharedData[today] || {};
-    dates.unshift(today);
-  }
+  if (!sharedData[today]) sharedData[today] = {};
+  const dates = Object.keys(sharedData).sort().reverse();
+  select.innerHTML = '';
 
   dates.forEach(date => {
     const opt = document.createElement("option");
@@ -318,6 +315,7 @@ function updateDateSelect() {
 
 function loadLogs() {
   const date = document.getElementById("dateSelect").value;
+  const inputDate = document.getElementById("inputDate").value;
   const baby = document.getElementById("baby").value;
   const logs = (sharedData[date] && sharedData[date][baby]?.logs) || [];
   const note = (sharedData[date] && sharedData[date][baby]?.daily) || {};
@@ -333,7 +331,6 @@ function loadLogs() {
   let totalFeed = 0, poopCount = 0, peeCount = 0;
   let latestFeedTime = null;
   const today = new Date().toISOString().split('T')[0];
-  const inputDate = document.getElementById("inputDate").value;
 
   logs.forEach((entry, i) => {
     const tr = document.createElement("tr");
@@ -360,11 +357,10 @@ function loadLogs() {
      수유량: <span class="highlightFeed">${totalFeed}mL</span>,
      대변 ${poopCount}회, 소변 ${peeCount}회`;
 
-  if (inputDate === today && latestFeedTime) {
+  if (inputDate === today && latestFeedTime)
     setNextFeedTimeLabel(latestFeedTime);
-  } else {
+  else
     document.getElementById("nextFeedTime").textContent = "다음 수유 시간: -";
-  }
 }
 
 function deleteLog(date, baby, index) {
