@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="theme-color" content="#4caf50">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
   <style>
@@ -216,18 +215,16 @@
     </table>
 
     <canvas id="feedChart" height="250"></canvas>
-
-    <button onclick="downloadAllLogsAsPDF()" style="margin-top: 40px;">전체 PDF 백업</button>
   </div>
-  <script>
+
+<script>
   const firebaseConfig = {
     apiKey: "AIzaSyCC5LID8sgqNYfG9lUY32m4CDL2f11x2aY",
     authDomain: "feeding-log-d88a6.firebaseapp.com",
     projectId: "feeding-log-d88a6",
-    storageBucket: "feeding-log-d88a6.firebasestorage.app",
+    storageBucket: "feeding-log-d88a6.appspot.com",
     messagingSenderId: "175054478050",
-    appId: "1:175054478050:web:aedca7675e674c44c35cbb",
-    measurementId: "G-D4876MKMVK"
+    appId: "1:175054478050:web:aedca7675e674c44c35cbb"
   };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
@@ -281,14 +278,17 @@
     const [h, m] = timeStr.split(':').map(Number);
     const dt = new Date();
     dt.setHours(h);
-    dt.setMinutes(m + 210);
+    dt.setMinutes(m + 210); // 3시간 30분 후
     const hh = String(dt.getHours()).padStart(2, '0');
     const mm = String(dt.getMinutes()).padStart(2, '0');
     const timeText = to12HourFormat(`${hh}:${mm}`);
     document.getElementById('nextFeedTime').innerHTML =
       `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
   }
+</script>
+<!-- 다음 파트 계속됨 -->
 
+```html
   async function saveSharedData() {
     await docRef.set(sharedData, { merge: true });
   }
@@ -313,9 +313,7 @@
     document.getElementById('pee').checked = false;
     document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('time').value = getNowTime();
-    if (date === new Date().toISOString().split('T')[0] && feedAmount > 0) {
-      setNextFeedTimeLabel(time);
-    }
+    setNextFeedTimeLabel(time);
   }
 
   async function saveDailyNote() {
@@ -362,12 +360,14 @@
     const tbody = document.getElementById('logTable');
     tbody.innerHTML = '';
     let totalFeed = 0, poopCount = 0, peeCount = 0;
-    let latestFeedTime = null;
+    let latestTime = null;
     logs.forEach((entry, i) => {
       const amt = parseInt(entry.feedAmount);
       if (!isNaN(amt)) {
         totalFeed += amt;
-        if (!latestFeedTime && amt > 0) latestFeedTime = entry.time;
+        if (amt > 0 && (!latestTime || entry.time > latestTime)) {
+          latestTime = entry.time;
+        }
       }
       if (entry.poopType) poopCount++;
       if (entry.pee) peeCount++;
@@ -388,15 +388,20 @@
        수유량: <span class="highlightFeed">${totalFeed}mL</span>,
        대변 ${poopCount}회, 소변 ${peeCount}회` +
       (note.weight ? `<br>체중: ${note.weight}kg` : '');
-    if (date === new Date().toISOString().split('T')[0] && latestFeedTime)
-      setNextFeedTimeLabel(latestFeedTime);
-    else
+    if (latestTime) {
+      setNextFeedTimeLabel(latestTime);
+    } else {
       document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
+    }
   }
 
   function updateDateSelect() {
     const select = document.getElementById('dateSelect');
-    const dates = Object.keys(sharedData).sort().reverse();
+    const today = new Date().toISOString().split('T')[0];
+    const dates = Object.keys(sharedData)
+      .filter(date => date <= today)
+      .sort()
+      .reverse();
     select.innerHTML = '';
     dates.forEach(date => {
       const opt = document.createElement('option');
@@ -470,57 +475,6 @@
         }
       }
     });
-  }
-
-  async function downloadAllLogsAsPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const dates = Object.keys(sharedData).sort();
-
-    let firstPage = true;
-    for (const date of dates) {
-      for (const baby of Object.keys(sharedData[date])) {
-        if (!firstPage) doc.addPage();
-        firstPage = false;
-
-        const { daily = {}, logs = [] } = sharedData[date][baby];
-        let y = 20;
-
-        doc.setFontSize(16);
-        doc.text(`${date} - ${baby} 수유일지`, 14, y);
-        y += 10;
-
-        doc.setFontSize(12);
-        if (daily.weight) doc.text(`몸무게: ${daily.weight}kg`, 14, y);
-        if (daily.temperature) doc.text(`체온: ${daily.temperature}℃`, 70, y);
-        if (daily.bathed) doc.text(`목욕: O`, 130, y);
-        y += 10;
-
-        if (daily.memo) {
-          const memoLines = doc.splitTextToSize(`메모: ${daily.memo}`, 180);
-          doc.text(memoLines, 14, y);
-          y += memoLines.length * 7;
-        }
-
-        doc.text("시간   | 수유량 | 대변 | 소변", 14, y); y += 8;
-        doc.setLineWidth(0.1);
-        doc.line(14, y, 196, y); y += 4;
-
-        let total = 0, poop = 0, pee = 0;
-        logs.forEach(log => {
-          const line = `${to12HourFormat(log.time)} | ${log.feedAmount || '-'}mL | ${log.poopType || '-'} | ${log.pee ? 'O' : '-'}`;
-          doc.text(line, 14, y); y += 7;
-          total += log.feedAmount || 0;
-          if (log.poopType) poop++;
-          if (log.pee) pee++;
-        });
-
-        y += 4;
-        doc.text(`총 수유량: ${total}mL / 대변 ${poop}회 / 소변 ${pee}회`, 14, y);
-      }
-    }
-
-    doc.save("수유일지_백업.pdf");
   }
 </script>
 </body>
