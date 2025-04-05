@@ -395,20 +395,20 @@
   }
 
   function updateDateSelect() {
-    const select = document.getElementById('dateSelect');
-    const dates = Object.keys(sharedData).sort().reverse();
-    select.innerHTML = '';
-    dates.forEach(date => {
-      const opt = document.createElement('option');
-      opt.value = date;
-      opt.textContent = date;
-      select.appendChild(opt);
-    });
-    if (dates.length > 0) {
-      select.value = dates[0];
-      document.getElementById('inputDate').value = dates[0];
-    }
+  const select = document.getElementById('dateSelect');
+  const dates = Object.keys(sharedData).sort().reverse();
+  select.innerHTML = '';
+  dates.forEach(date => {
+    const opt = document.createElement('option');
+    opt.value = date;
+    opt.textContent = date;
+    select.appendChild(opt);
+  });
+  if (dates.length > 0) {
+    select.value = dates[0]; // dateSelect만 설정
+    // document.getElementById('inputDate').value = dates[0]; ← 삭제!
   }
+}
 
   function drawChart() {
     const baby = document.getElementById('baby').value;
