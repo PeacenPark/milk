@@ -237,12 +237,12 @@
   const docRef = db.collection("logs").doc("shared-log");
   let sharedData = {};
 
-  // ✅ NotoSansKR 폰트 등록 (Base64)
-  const notoSansKR = 'AAEAAAASAQAABAAgR0RFRrRCsIIAAEAAAAV...'; // (생략: 실제 base64 내용 매우 김)
-  window.jspdf.jsPDF.API.events.push(["addFonts", function () {
-    this.addFileToVFS("NotoSansKR.ttf", notoSansKR);
-    this.addFont("NotoSansKR.ttf", "NotoSansKR", "normal");
-  }]);
+// PDF 한글 폰트 등록 (Base64는 아래 생략)
+const notoBase64 = "AAEAAAASAQAABAA..."; // 길어서 생략함
+window.jspdf.jsPDF.API.events.push(["addFonts", function () {
+  this.addFileToVFS("NotoSansKR.ttf", notoBase64);
+  this.addFont("NotoSansKR.ttf", "NotoSansKR", "normal");
+}]);
 
   function initApp() {
     const today = new Date().toISOString().split('T')[0];
@@ -498,7 +498,7 @@
   async function downloadAllLogsAsPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    doc.setFont("NotoSansKR"); // 한글 폰트 적용
+    doc.setFont("NotoSansKR");
     const dates = Object.keys(sharedData).sort();
     let firstPage = true;
 
