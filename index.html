@@ -405,8 +405,11 @@
     select.appendChild(opt);
   });
   if (dates.length > 0) {
-    select.value = dates[0]; // dateSelect만 설정
-    // document.getElementById('inputDate').value = dates[0]; ← 삭제!
+    select.value = dates[0];
+    // 기존 코드: document.getElementById('inputDate').value = dates[0];
+    
+    // 대신 항상 현재 날짜로 설정
+    document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
   }
 }
 
