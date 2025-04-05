@@ -6,9 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="theme-color" content="#4caf50">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
     body {
       font-family: 'Arial', sans-serif;
@@ -150,6 +151,7 @@
     <button onclick="selectBaby('박 온')" id="btnOn" class="babyBtn selected">박 온</button>
     <button onclick="selectBaby('박 겸')" id="btnGyeom" class="babyBtn">박 겸</button>
   </div>
+
   <select id="baby" style="display:none;">
     <option value="박 온">박 온</option>
     <option value="박 겸">박 겸</option>
@@ -217,22 +219,30 @@
 
     <canvas id="feedChart" height="250"></canvas>
 
-    <button onclick="downloadAllLogsAsPDF()" style="margin-top: 40px;">전체 PDF 백업</button>
+    <button onclick="downloadAllLogsAsPDF()" style="margin-top: 40px;">📄 전체 PDF 백업</button>
   </div>
   <script>
   const firebaseConfig = {
     apiKey: "AIzaSyCC5LID8sgqNYfG9lUY32m4CDL2f11x2aY",
     authDomain: "feeding-log-d88a6.firebaseapp.com",
     projectId: "feeding-log-d88a6",
-    storageBucket: "feeding-log-d88a6.firebasestorage.app",
+    storageBucket: "feeding-log-d88a6.appspot.com",
     messagingSenderId: "175054478050",
     appId: "1:175054478050:web:aedca7675e674c44c35cbb",
     measurementId: "G-D4876MKMVK"
   };
+
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   const docRef = db.collection("logs").doc("shared-log");
   let sharedData = {};
+
+  // ✅ NotoSansKR 폰트 등록 (Base64)
+  const notoSansKR = 'AAEAAAASAQAABAAgR0RFRrRCsIIAAEAAAAV...'; // (생략: 실제 base64 내용 매우 김)
+  window.jspdf.jsPDF.API.events.push(["addFonts", function () {
+    this.addFileToVFS("NotoSansKR.ttf", notoSansKR);
+    this.addFont("NotoSansKR.ttf", "NotoSansKR", "normal");
+  }]);
 
   function initApp() {
     const today = new Date().toISOString().split('T')[0];
@@ -300,19 +310,23 @@
     const feedAmount = parseInt(document.getElementById('feedAmount').value) || 0;
     const poopType = document.getElementById('poopType').value;
     const pee = document.getElementById('pee').checked;
+
     if (feedAmount === 0 && !poopType && !pee) {
       alert("수유량 또는 대변/소변 상태 중 하나 이상 입력 필요");
       return;
     }
+
     if (!sharedData[date]) sharedData[date] = {};
     if (!sharedData[date][baby]) sharedData[date][baby] = { logs: [], daily: {} };
     sharedData[date][baby].logs.unshift({ time, feedAmount, poopType, pee });
     await saveSharedData();
+
     document.getElementById('feedAmount').selectedIndex = 0;
     document.getElementById('poopType').value = '';
     document.getElementById('pee').checked = false;
     document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('time').value = getNowTime();
+
     if (date === new Date().toISOString().split('T')[0] && feedAmount > 0) {
       setNextFeedTimeLabel(time);
     }
@@ -325,10 +339,77 @@
     const temperature = parseFloat(document.getElementById('temperature').value) || null;
     const bathed = document.getElementById('bathed').checked;
     const memo = document.getElementById('memo').value;
+
     if (!sharedData[date]) sharedData[date] = {};
     if (!sharedData[date][baby]) sharedData[date][baby] = { logs: [], daily: {} };
     sharedData[date][baby].daily = { weight, temperature, bathed, memo };
     await saveSharedData();
+  }
+
+  function updateDateSelect() {
+    const select = document.getElementById('dateSelect');
+    const dates = Object.keys(sharedData).sort().reverse();
+    select.innerHTML = '';
+    dates.forEach(date => {
+      const opt = document.createElement('option');
+      opt.value = date;
+      opt.textContent = date;
+      select.appendChild(opt);
+    });
+    if (dates.length > 0) {
+      select.value = dates[0];
+      document.getElementById('inputDate').value = dates[0];
+    }
+  }
+
+  function loadLogs() {
+    const date = document.getElementById('dateSelect').value;
+    const baby = document.getElementById('baby').value;
+    const logs = (sharedData[date] && sharedData[date][baby]?.logs) || [];
+    const note = (sharedData[date] && sharedData[date][baby]?.daily) || {};
+
+    document.getElementById('weight').value = note.weight || '';
+    document.getElementById('temperature').value = note.temperature || '';
+    document.getElementById('bathed').checked = note.bathed || false;
+    document.getElementById('memo').value = note.memo || '';
+
+    const tbody = document.getElementById('logTable');
+    tbody.innerHTML = '';
+    let totalFeed = 0, poopCount = 0, peeCount = 0;
+    let latestFeedTime = null;
+
+    logs.forEach((entry, i) => {
+      const amt = parseInt(entry.feedAmount);
+      if (!isNaN(amt)) {
+        totalFeed += amt;
+        if (!latestFeedTime && amt > 0) latestFeedTime = entry.time;
+      }
+      if (entry.poopType) poopCount++;
+      if (entry.pee) peeCount++;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${to12HourFormat(entry.time)}</td>
+        <td>${amt ? amt + 'mL' : '-'}</td>
+        <td>${entry.poopType || '-'}</td>
+        <td>${entry.pee ? 'O' : ''}</td>
+        <td>
+          <button onclick="editLog('${date}', '${baby}', ${i})">✏️</button>
+          <button onclick="deleteLog('${date}', '${baby}', ${i})">🗑</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('dailySummaryBox').innerHTML =
+      `<strong>${date} ${baby} 통계</strong><br>
+       수유량: <span class="highlightFeed">${totalFeed}mL</span>,
+       대변 ${poopCount}회, 소변 ${peeCount}회` +
+      (note.weight ? `<br>체중: ${note.weight}kg` : '');
+
+    if (date === new Date().toISOString().split('T')[0] && latestFeedTime)
+      setNextFeedTimeLabel(latestFeedTime);
+    else
+      document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
   }
 
   async function deleteLog(date, baby, index) {
@@ -350,70 +431,11 @@
     await saveSharedData();
   }
 
-  function loadLogs() {
-    const date = document.getElementById('dateSelect').value;
-    const baby = document.getElementById('baby').value;
-    const logs = (sharedData[date] && sharedData[date][baby]?.logs) || [];
-    const note = (sharedData[date] && sharedData[date][baby]?.daily) || {};
-    document.getElementById('weight').value = note.weight || '';
-    document.getElementById('temperature').value = note.temperature || '';
-    document.getElementById('bathed').checked = note.bathed || false;
-    document.getElementById('memo').value = note.memo || '';
-    const tbody = document.getElementById('logTable');
-    tbody.innerHTML = '';
-    let totalFeed = 0, poopCount = 0, peeCount = 0;
-    let latestFeedTime = null;
-    logs.forEach((entry, i) => {
-      const amt = parseInt(entry.feedAmount);
-      if (!isNaN(amt)) {
-        totalFeed += amt;
-        if (!latestFeedTime && amt > 0) latestFeedTime = entry.time;
-      }
-      if (entry.poopType) poopCount++;
-      if (entry.pee) peeCount++;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${to12HourFormat(entry.time)}</td>
-        <td>${amt ? amt + 'mL' : '-'}</td>
-        <td>${entry.poopType || '-'}</td>
-        <td>${entry.pee ? 'O' : ''}</td>
-        <td>
-          <button onclick="editLog('${date}', '${baby}', ${i})">✏️</button>
-          <button onclick="deleteLog('${date}', '${baby}', ${i})">🗑</button>
-        </td>`;
-      tbody.appendChild(tr);
-    });
-    document.getElementById('dailySummaryBox').innerHTML =
-      `<strong>${date} ${baby} 통계</strong><br>
-       수유량: <span class="highlightFeed">${totalFeed}mL</span>,
-       대변 ${poopCount}회, 소변 ${peeCount}회` +
-      (note.weight ? `<br>체중: ${note.weight}kg` : '');
-    if (date === new Date().toISOString().split('T')[0] && latestFeedTime)
-      setNextFeedTimeLabel(latestFeedTime);
-    else
-      document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
-  }
-
-  function updateDateSelect() {
-    const select = document.getElementById('dateSelect');
-    const dates = Object.keys(sharedData).sort().reverse();
-    select.innerHTML = '';
-    dates.forEach(date => {
-      const opt = document.createElement('option');
-      opt.value = date;
-      opt.textContent = date;
-      select.appendChild(opt);
-    });
-    if (dates.length > 0) {
-      select.value = dates[0];
-      document.getElementById('inputDate').value = dates[0];
-    }
-  }
-
   function drawChart() {
     const baby = document.getElementById('baby').value;
     const dateList = Object.keys(sharedData).sort();
     const feedTotals = [], weightData = [];
+
     dateList.forEach(date => {
       const logs = sharedData[date][baby]?.logs || [];
       const daily = sharedData[date][baby]?.daily || {};
@@ -424,6 +446,7 @@
       feedTotals.push(total);
       weightData.push(daily.weight ?? null);
     });
+
     const ctx = document.getElementById('feedChart').getContext('2d');
     if (window.chartInstance) window.chartInstance.destroy();
     window.chartInstance = new Chart(ctx, {
@@ -475,14 +498,14 @@
   async function downloadAllLogsAsPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
+    doc.setFont("NotoSansKR"); // 한글 폰트 적용
     const dates = Object.keys(sharedData).sort();
-
     let firstPage = true;
+
     for (const date of dates) {
       for (const baby of Object.keys(sharedData[date])) {
         if (!firstPage) doc.addPage();
         firstPage = false;
-
         const { daily = {}, logs = [] } = sharedData[date][baby];
         let y = 20;
 
