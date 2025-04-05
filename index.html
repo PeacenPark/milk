@@ -399,18 +399,14 @@
   const select = document.getElementById('dateSelect');
   const today = new Date().toISOString().split('T')[0];
 
-  let dates = Object.keys(sharedData)
-    .filter(date => date <= today);
+  // 1. sharedData에서 날짜 수집 (오늘 포함되도록 강제 추가)
+  let dates = Object.keys(sharedData || {});
+  if (!dates.includes(today)) dates.push(today);
 
-  // ✅ 오늘 날짜가 없으면 추가
-  if (!dates.includes(today)) {
-    dates.push(today);
-  }
+  // 2. 과거 + 오늘까지만 필터링
+  dates = dates.filter(date => date <= today).sort().reverse();
 
-  // ✅ 정렬 (최신이 위로)
-  dates = dates.sort().reverse();
-
-  // ✅ 드롭다운 옵션 채우기
+  // 3. 드롭다운 채우기
   select.innerHTML = '';
   dates.forEach(date => {
     const opt = document.createElement('option');
@@ -419,15 +415,14 @@
     select.appendChild(opt);
   });
 
-  // ✅ 현재 선택된 값 유지, 없으면 오늘 날짜로
+  // 4. 선택된 값 유지 또는 오늘로 설정
   if (!select.value || !dates.includes(select.value)) {
     select.value = today;
   }
 
-  // ✅ inputDate도 오늘로
+  // 5. 입력용 날짜 필드도 오늘로
   document.getElementById('inputDate').value = today;
 }
-
   function drawChart() {
     const baby = document.getElementById('baby').value;
     const dateList = Object.keys(sharedData).sort();
