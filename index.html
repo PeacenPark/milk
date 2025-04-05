@@ -217,7 +217,6 @@
     <canvas id="feedChart" height="250"></canvas>
   </div>
   <script>
-  // Firebase 초기화
   const firebaseConfig = {
     apiKey: "AIzaSyCC5LID8sgqNYfG9lUY32m4CDL2f11x2aY",
     authDomain: "feeding-log-d88a6.firebaseapp.com",
@@ -233,22 +232,22 @@
 
   let sharedData = {};
 
-  async function initApp() {
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('inputDate').value = today;
-  document.getElementById('time').value = getNowTime();
-  updateDday();
+  function initApp() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('inputDate').value = today;
+    document.getElementById('time').value = getNowTime();
+    updateDday();
 
-  // 실시간 동기화 설정
-  docRef.onSnapshot((doc) => {
-    sharedData = doc.exists ? doc.data() : {};
-    updateDateSelect();
-    loadLogs();
-    drawChart();
-  });
+    // 실시간 동기화
+    docRef.onSnapshot((doc) => {
+      sharedData = doc.exists ? doc.data() : {};
+      updateDateSelect();
+      loadLogs();
+      drawChart();
+    });
 
-  selectBaby('박 온');
-}
+    selectBaby('박 온');
+  }
 
   function getNowTime() {
     const now = new Date();
@@ -293,11 +292,6 @@
       `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
   }
 
-  async function loadSharedData() {
-    const snapshot = await docRef.get();
-    sharedData = snapshot.exists ? snapshot.data() : {};
-  }
-
   async function saveSharedData() {
     await docRef.set(sharedData, { merge: true });
   }
@@ -320,25 +314,16 @@
     sharedData[date][baby].logs.unshift({ time, feedAmount, poopType, pee });
 
     await saveSharedData();
-    updateDateSelect();
-
-    setTimeout(() => {
-      document.getElementById('dateSelect').value = date;
-    }, 0);
-
-    if (date === new Date().toISOString().split('T')[0] && feedAmount > 0) {
-      setNextFeedTimeLabel(time);
-    }
 
     document.getElementById('feedAmount').selectedIndex = 0;
     document.getElementById('poopType').value = '';
     document.getElementById('pee').checked = false;
-
     document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('time').value = getNowTime();
 
-    loadLogs();
-    drawChart();
+    if (date === new Date().toISOString().split('T')[0] && feedAmount > 0) {
+      setNextFeedTimeLabel(time);
+    }
   }
 
   async function saveDailyNote() {
@@ -354,15 +339,11 @@
     sharedData[date][baby].daily = { weight, temperature, bathed, memo };
 
     await saveSharedData();
-    loadLogs();
-    drawChart();
   }
 
   async function deleteLog(date, baby, index) {
     sharedData[date][baby].logs.splice(index, 1);
     await saveSharedData();
-    loadLogs();
-    drawChart();
   }
 
   async function editLog(date, baby, index) {
@@ -377,8 +358,6 @@
       pee: newPee
     };
     await saveSharedData();
-    loadLogs();
-    drawChart();
   }
 
   function loadLogs() {
