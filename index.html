@@ -240,11 +240,12 @@
     document.getElementById('time').value = getNowTime();
     updateDday();
     docRef.onSnapshot((doc) => {
-      sharedData = doc.exists ? doc.data() : {};
-      updateDateSelect();
-      loadLogs();
-      drawChart();
-    });
+  sharedData = doc.exists ? doc.data() : {};
+  updateDateSelect(); // 먼저 날짜 셀렉트 업데이트
+  loadLogs();         // 그 후 로그 불러오기
+  drawChart();
+});
+    
     selectBaby('박 온');
   }
 
