@@ -110,6 +110,23 @@
       font-weight: bold;
       color: #ff5722;
     }
+    .babyBtn {
+      width: 120px;
+      height: 120px;
+      border-radius: 60px;
+      border: 3px solid #4caf50;
+      background: #e8f5e9;
+      color: #2e7d32;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .babyBtn.selected {
+      background: #4caf50;
+      color: white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
   </style>
 </head>
 <body onload="initApp()">
@@ -122,25 +139,26 @@
   </header>
 
   <div id="selectedBabyBox">
-    <img id="babyImage" src="" alt="" />
+    <img id="babyImage" src="IMG_1186.png" alt="baby" />
     <span id="selectedBabyName">박 온</span>
   </div>
 
-  <table id="infoTable"><tr><td><span id="nextFeedTime">다음 수유 시간: -</span></td></tr></table>
+  <div id="babySelector" style="display: flex; justify-content: center; gap: 20px; margin: 20px 0;">
+    <button onclick="selectBaby('박 온')" id="btnOn" class="babyBtn selected">박 온</button>
+    <button onclick="selectBaby('박 겸')" id="btnGyeom" class="babyBtn">박 겸</button>
+  </div>
+  <select id="baby" style="display:none;">
+    <option value="박 온">박 온</option>
+    <option value="박 겸">박 겸</option>
+  </select>
 
+  <table id="infoTable"><tr><td><span id="nextFeedTime">다음 수유 시간: -</span></td></tr></table>
   <div style="max-width: 1200px; margin: auto; padding: 20px;">
-    <select id="baby" onchange="updateBabyName(); loadLogs(); drawChart();" style="
-      font-size: 28px; padding: 14px; border-radius: 12px;
-      border: 2px solid #4caf50; background: #e8f5e9; color: #2e7d32;
-      font-weight: bold; box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
-    ">
-      <option value="박 온">박 온</option>
-      <option value="박 겸">박 겸</option>
-    </select>
     <div class="row">
       <input type="date" id="inputDate">
       <input type="time" id="time">
     </div>
+
     <select id="feedAmount">
       <option value="">수유량 (mL)</option>
       <option value="30">30 mL</option>
@@ -156,12 +174,13 @@
       <option value="130">130 mL</option>
       <option value="140">140 mL</option>
       <option value="150">150 mL</option>
-      <option value="160">160 mL</option>
+      <option value="160" selected>160 mL</option>
       <option value="170">170 mL</option>
       <option value="180">180 mL</option>
       <option value="190">190 mL</option>
       <option value="200">200 mL</option>
     </select>
+
     <select id="poopType">
       <option value="">대변</option>
       <option value="정상">정상</option>
@@ -169,6 +188,7 @@
       <option value="묽은변">묽은변</option>
       <option value="설사">설사</option>
     </select>
+
     <label style="font-size: 20px;"><input type="checkbox" id="pee" /> 소변</label>
     <button onclick="saveLog()">기록 저장</button>
 
@@ -182,12 +202,16 @@
         <td><button onclick="saveDailyNote()">저장</button></td>
       </tr></tbody>
     </table>
+
     <textarea id="memo" placeholder="메모를 입력하세요" style="margin-top:10px;"></textarea>
+
     <div id="dailySummaryBox" style="background:#e0f7fa; font-size:20px; padding:16px; border-radius:10px; margin-top:30px;"></div>
+
     <table>
       <thead><tr><th>시간</th><th>수유량</th><th>대변</th><th>소변</th><th>관리</th></tr></thead>
       <tbody id="logTable"><tr><td colspan="5">기록 없음</td></tr></tbody>
     </table>
+
     <canvas id="feedChart" height="250"></canvas>
   </div>
 <script>
@@ -197,9 +221,7 @@ function initApp() {
   document.getElementById('time').value = getNowTime();
   updateDday();
   updateDateSelect();
-  updateBabyName();
-  loadLogs();
-  drawChart();
+  selectBaby('박 온'); // 초기 선택
 }
 
 function getNowTime() {
@@ -221,24 +243,30 @@ function updateDday() {
   document.getElementById('dday').textContent = `생후 ${diff}일`;
 }
 
-function updateBabyName() {
-  const baby = document.getElementById('baby').value;
-  document.getElementById('selectedBabyName').textContent = baby;
-  const img = document.getElementById('babyImage');
-  img.src = baby === '박 온' ? 'IMG_1186.png' : 'IMG_1185.png';
+function selectBaby(name) {
+  document.getElementById('baby').value = name;
+  document.getElementById('selectedBabyName').textContent = name;
+  document.getElementById('babyImage').src = name === '박 온' ? 'IMG_1186.png' : 'IMG_1185.png';
+
+  document.getElementById('btnOn').classList.toggle('selected', name === '박 온');
+  document.getElementById('btnGyeom').classList.toggle('selected', name === '박 겸');
+
+  loadLogs();
+  drawChart();
 }
 
 function setNextFeedTimeLabel(timeStr) {
   const [h, m] = timeStr.split(':').map(Number);
   const dt = new Date();
   dt.setHours(h);
-  dt.setMinutes(m + 210);
+  dt.setMinutes(m + 210); // 3시간 30분 후
   const hh = String(dt.getHours()).padStart(2, '0');
   const mm = String(dt.getMinutes()).padStart(2, '0');
   const timeText = to12HourFormat(`${hh}:${mm}`);
   document.getElementById('nextFeedTime').innerHTML =
     `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
 }
+
 function getData() {
   return JSON.parse(localStorage.getItem('babyLogs') || '{}');
 }
@@ -264,12 +292,11 @@ function saveLog() {
   if (!data[date][baby]) data[date][baby] = { logs: [], daily: {} };
   data[date][baby].logs.unshift({ time, feedAmount, poopType, pee });
   saveData(data);
-updateDateSelect();
+  updateDateSelect();
 
-// ✅ 선택값 설정은 다음 틱으로 넘겨서 보장
-setTimeout(() => {
-  document.getElementById('dateSelect').value = date;
-}, 0);
+  setTimeout(() => {
+    document.getElementById('dateSelect').value = date;
+  }, 0);
 
   if (date === new Date().toISOString().split('T')[0] && feedAmount > 0) {
     setNextFeedTimeLabel(time);
@@ -279,13 +306,13 @@ setTimeout(() => {
   document.getElementById('poopType').value = '';
   document.getElementById('pee').checked = false;
 
-  // ✅ 다시 현재 날짜/시간 설정
   document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('time').value = getNowTime();
 
   loadLogs();
   drawChart();
 }
+
 function saveDailyNote() {
   const date = document.getElementById('dateSelect').value;
   const baby = document.getElementById('baby').value;
@@ -327,6 +354,7 @@ function editLog(date, baby, index) {
   loadLogs();
   drawChart();
 }
+
 function loadLogs() {
   const date = document.getElementById('dateSelect').value;
   const baby = document.getElementById('baby').value;
@@ -334,17 +362,10 @@ function loadLogs() {
   const logs = (data[date] && data[date][baby]?.logs) || [];
   const note = (data[date] && data[date][baby]?.daily) || {};
 
-  if (note) {
-    document.getElementById('weight').value = note.weight || '';
-    document.getElementById('temperature').value = note.temperature || '';
-    document.getElementById('bathed').checked = note.bathed || false;
-    document.getElementById('memo').value = note.memo || '';
-  } else {
-    document.getElementById('weight').value = '';
-    document.getElementById('temperature').value = '';
-    document.getElementById('bathed').checked = false;
-    document.getElementById('memo').value = '';
-  }
+  document.getElementById('weight').value = note.weight || '';
+  document.getElementById('temperature').value = note.temperature || '';
+  document.getElementById('bathed').checked = note.bathed || false;
+  document.getElementById('memo').value = note.memo || '';
 
   const tbody = document.getElementById('logTable');
   tbody.innerHTML = '';
@@ -389,7 +410,7 @@ function loadLogs() {
 function updateDateSelect() {
   const select = document.getElementById('dateSelect');
   const data = getData();
-  const dates = Object.keys(data).sort().reverse(); // 최신 날짜가 앞에 옴
+  const dates = Object.keys(data).sort().reverse();
   select.innerHTML = '';
 
   dates.forEach(date => {
@@ -399,12 +420,12 @@ function updateDateSelect() {
     select.appendChild(opt);
   });
 
-  // ✅ 가장 최근 날짜를 자동 선택
   if (dates.length > 0) {
-    select.value = dates[0]; // 최신 날짜
+    select.value = dates[0];
     document.getElementById('inputDate').value = dates[0];
   }
 }
+
 function drawChart() {
   const baby = document.getElementById('baby').value;
   const data = getData();
@@ -471,4 +492,4 @@ function drawChart() {
 }
 </script>
 </body>
-</html>
+</html> 
