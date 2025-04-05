@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="theme-color" content="#4caf50">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore-compat.js"></script>
   <style>
@@ -215,6 +216,8 @@
     </table>
 
     <canvas id="feedChart" height="250"></canvas>
+
+    <button onclick="downloadAllLogsAsPDF()" style="margin-top: 40px;">전체 PDF 백업</button>
   </div>
   <script>
   const firebaseConfig = {
@@ -229,7 +232,6 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   const docRef = db.collection("logs").doc("shared-log");
-
   let sharedData = {};
 
   function initApp() {
@@ -237,15 +239,12 @@
     document.getElementById('inputDate').value = today;
     document.getElementById('time').value = getNowTime();
     updateDday();
-
-    // 실시간 동기화
     docRef.onSnapshot((doc) => {
       sharedData = doc.exists ? doc.data() : {};
       updateDateSelect();
       loadLogs();
       drawChart();
     });
-
     selectBaby('박 온');
   }
 
@@ -272,10 +271,8 @@
     document.getElementById('baby').value = name;
     document.getElementById('selectedBabyName').textContent = name;
     document.getElementById('babyImage').src = name === '박 온' ? 'IMG_1186.png' : 'IMG_1185.png';
-
     document.getElementById('btnOn').classList.toggle('selected', name === '박 온');
     document.getElementById('btnGyeom').classList.toggle('selected', name === '박 겸');
-
     loadLogs();
     drawChart();
   }
@@ -303,24 +300,19 @@
     const feedAmount = parseInt(document.getElementById('feedAmount').value) || 0;
     const poopType = document.getElementById('poopType').value;
     const pee = document.getElementById('pee').checked;
-
     if (feedAmount === 0 && !poopType && !pee) {
       alert("수유량 또는 대변/소변 상태 중 하나 이상 입력 필요");
       return;
     }
-
     if (!sharedData[date]) sharedData[date] = {};
     if (!sharedData[date][baby]) sharedData[date][baby] = { logs: [], daily: {} };
     sharedData[date][baby].logs.unshift({ time, feedAmount, poopType, pee });
-
     await saveSharedData();
-
     document.getElementById('feedAmount').selectedIndex = 0;
     document.getElementById('poopType').value = '';
     document.getElementById('pee').checked = false;
     document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('time').value = getNowTime();
-
     if (date === new Date().toISOString().split('T')[0] && feedAmount > 0) {
       setNextFeedTimeLabel(time);
     }
@@ -333,11 +325,9 @@
     const temperature = parseFloat(document.getElementById('temperature').value) || null;
     const bathed = document.getElementById('bathed').checked;
     const memo = document.getElementById('memo').value;
-
     if (!sharedData[date]) sharedData[date] = {};
     if (!sharedData[date][baby]) sharedData[date][baby] = { logs: [], daily: {} };
     sharedData[date][baby].daily = { weight, temperature, bathed, memo };
-
     await saveSharedData();
   }
 
@@ -365,18 +355,14 @@
     const baby = document.getElementById('baby').value;
     const logs = (sharedData[date] && sharedData[date][baby]?.logs) || [];
     const note = (sharedData[date] && sharedData[date][baby]?.daily) || {};
-
     document.getElementById('weight').value = note.weight || '';
     document.getElementById('temperature').value = note.temperature || '';
     document.getElementById('bathed').checked = note.bathed || false;
     document.getElementById('memo').value = note.memo || '';
-
     const tbody = document.getElementById('logTable');
     tbody.innerHTML = '';
-
     let totalFeed = 0, poopCount = 0, peeCount = 0;
     let latestFeedTime = null;
-
     logs.forEach((entry, i) => {
       const amt = parseInt(entry.feedAmount);
       if (!isNaN(amt)) {
@@ -385,7 +371,6 @@
       }
       if (entry.poopType) poopCount++;
       if (entry.pee) peeCount++;
-
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${to12HourFormat(entry.time)}</td>
@@ -398,13 +383,11 @@
         </td>`;
       tbody.appendChild(tr);
     });
-
     document.getElementById('dailySummaryBox').innerHTML =
       `<strong>${date} ${baby} 통계</strong><br>
        수유량: <span class="highlightFeed">${totalFeed}mL</span>,
        대변 ${poopCount}회, 소변 ${peeCount}회` +
       (note.weight ? `<br>체중: ${note.weight}kg` : '');
-
     if (date === new Date().toISOString().split('T')[0] && latestFeedTime)
       setNextFeedTimeLabel(latestFeedTime);
     else
@@ -415,14 +398,12 @@
     const select = document.getElementById('dateSelect');
     const dates = Object.keys(sharedData).sort().reverse();
     select.innerHTML = '';
-
     dates.forEach(date => {
       const opt = document.createElement('option');
       opt.value = date;
       opt.textContent = date;
       select.appendChild(opt);
     });
-
     if (dates.length > 0) {
       select.value = dates[0];
       document.getElementById('inputDate').value = dates[0];
@@ -433,7 +414,6 @@
     const baby = document.getElementById('baby').value;
     const dateList = Object.keys(sharedData).sort();
     const feedTotals = [], weightData = [];
-
     dateList.forEach(date => {
       const logs = sharedData[date][baby]?.logs || [];
       const daily = sharedData[date][baby]?.daily || {};
@@ -444,7 +424,6 @@
       feedTotals.push(total);
       weightData.push(daily.weight ?? null);
     });
-
     const ctx = document.getElementById('feedChart').getContext('2d');
     if (window.chartInstance) window.chartInstance.destroy();
     window.chartInstance = new Chart(ctx, {
@@ -491,6 +470,57 @@
         }
       }
     });
+  }
+
+  async function downloadAllLogsAsPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const dates = Object.keys(sharedData).sort();
+
+    let firstPage = true;
+    for (const date of dates) {
+      for (const baby of Object.keys(sharedData[date])) {
+        if (!firstPage) doc.addPage();
+        firstPage = false;
+
+        const { daily = {}, logs = [] } = sharedData[date][baby];
+        let y = 20;
+
+        doc.setFontSize(16);
+        doc.text(`${date} - ${baby} 수유일지`, 14, y);
+        y += 10;
+
+        doc.setFontSize(12);
+        if (daily.weight) doc.text(`몸무게: ${daily.weight}kg`, 14, y);
+        if (daily.temperature) doc.text(`체온: ${daily.temperature}℃`, 70, y);
+        if (daily.bathed) doc.text(`목욕: O`, 130, y);
+        y += 10;
+
+        if (daily.memo) {
+          const memoLines = doc.splitTextToSize(`메모: ${daily.memo}`, 180);
+          doc.text(memoLines, 14, y);
+          y += memoLines.length * 7;
+        }
+
+        doc.text("시간   | 수유량 | 대변 | 소변", 14, y); y += 8;
+        doc.setLineWidth(0.1);
+        doc.line(14, y, 196, y); y += 4;
+
+        let total = 0, poop = 0, pee = 0;
+        logs.forEach(log => {
+          const line = `${to12HourFormat(log.time)} | ${log.feedAmount || '-'}mL | ${log.poopType || '-'} | ${log.pee ? 'O' : '-'}`;
+          doc.text(line, 14, y); y += 7;
+          total += log.feedAmount || 0;
+          if (log.poopType) poop++;
+          if (log.pee) pee++;
+        });
+
+        y += 4;
+        doc.text(`총 수유량: ${total}mL / 대변 ${poop}회 / 소변 ${pee}회`, 14, y);
+      }
+    }
+
+    doc.save("수유일지_백업.pdf");
   }
 </script>
 </body>
