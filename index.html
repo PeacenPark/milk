@@ -459,8 +459,10 @@
   
   function getTodayDate() {
   const now = new Date();
-  now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // local timezone 반영
-  return now.toISOString().split('T')[0];
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
   function drawChart() {
