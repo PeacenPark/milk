@@ -388,11 +388,11 @@
        수유량: <span class="highlightFeed">${totalFeed}mL</span>,
        대변 ${poopCount}회, 소변 ${peeCount}회` +
       (note.weight ? `<br>체중: ${note.weight}kg` : '');
-    if (latestFeedTime) {
+    if (latestFeedTime)
   setNextFeedTimeLabel(latestFeedTime);
-} else {
+else
   document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
-}
+    }
 
   function updateDateSelect() {
     const select = document.getElementById('dateSelect');
