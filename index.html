@@ -235,7 +235,7 @@
   let sharedData = {};
 
   function initApp() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDate();
     document.getElementById('inputDate').value = today;
     document.getElementById('time').value = getNowTime();
     updateDday();
@@ -313,8 +313,8 @@
     document.getElementById('pee').checked = false;
     document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('time').value = getNowTime();
-    if (date === new Date().toISOString().split('T')[0] && feedAmount > 0) {
-      setNextFeedTimeLabel(time);
+    if (date === getTodayDate() && feedAmount > 0) {
+     setNextFeedTimeLabel(time);
     }
   }
 
@@ -388,11 +388,11 @@
        수유량: <span class="highlightFeed">${totalFeed}mL</span>,
        대변 ${poopCount}회, 소변 ${peeCount}회` +
       (note.weight ? `<br>체중: ${note.weight}kg` : '');
-    if (date === new Date().toISOString().split('T')[0] && latestFeedTime)
-      setNextFeedTimeLabel(latestFeedTime);
+    if (date === getTodayDate() && latestFeedTime)
+       setNextFeedTimeLabel(latestFeedTime);
     else
-      document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
-  }
+       document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
+    }
 
   function updateDateSelect() {
     const select = document.getElementById('dateSelect');
@@ -409,6 +409,12 @@
       document.getElementById('inputDate').value = dates[0];
     }
   }
+  
+  function getTodayDate() {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // local timezone 반영
+  return now.toISOString().split('T')[0];
+}
 
   function drawChart() {
     const baby = document.getElementById('baby').value;
