@@ -309,7 +309,7 @@
     }
     if (!sharedData[date]) sharedData[date] = {};
     if (!sharedData[date][baby]) sharedData[date][baby] = { logs: [], daily: {} };
-    sharedData[date][baby].logs.unshift({ time, feedAmount, poopType, pee });
+    sharedData[date][baby].logs.push({ time, feedAmount, poopType, pee });
     await saveSharedData();
     document.getElementById('feedAmount').selectedIndex = 0;
     document.getElementById('poopType').value = '';
@@ -377,6 +377,11 @@
     const baby = document.getElementById('baby').value;
     const logs = (sharedData[date] && sharedData[date][baby]?.logs) || [];
     const note = (sharedData[date] && sharedData[date][baby]?.daily) || {};
+    logs.sort((a, b) => {
+    const t1 = new Date(`${date}T${b.time}`);
+    const t2 = new Date(`${date}T${a.time}`);
+    return t1 - t2; // 최근 시간이 먼저
+    });
     document.getElementById('weight').value = note.weight || '';
     document.getElementById('temperature').value = note.temperature || '';
     document.getElementById('bathed').checked = note.bathed || false;
