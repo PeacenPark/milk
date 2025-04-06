@@ -445,6 +445,24 @@
     select.appendChild(opt);
   });
 
+  const today = getTodayDate();
+
+  if (dates.length > 0) {
+    select.value = dates[0];
+
+    const currentInput = document.getElementById('inputDate').value;
+
+    // 현재 inputDate가 비어 있거나 오늘 이전일 때만 변경
+    if (!currentInput || currentInput < today) {
+      document.getElementById('inputDate').value = today;
+    }
+  } else {
+    // sharedData 자체가 비어있을 경우
+    select.innerHTML = `<option value="${today}">${today}</option>`;
+    select.value = today;
+    document.getElementById('inputDate').value = today;
+  }
+}
   if (dates.length > 0) {
     select.value = dates[0];
     document.getElementById('inputDate').value = dates[0];
