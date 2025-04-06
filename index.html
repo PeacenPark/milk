@@ -387,7 +387,7 @@
        수유량: <span class="highlightFeed">${totalFeed}mL</span>,
        대변 ${poopCount}회, 소변 ${peeCount}회` +
       (note.weight ? `<br>체중: ${note.weight}kg` : '');
-    updateNextFeedTimeFromAllLogs();
+    updateNextFeedTimeForBaby(baby);
     }
 
   function updateDateSelect() {
@@ -435,6 +435,35 @@ function updateNextFeedTimeFromAllLogs() {
       }
     }
   }
+  
+  function updateNextFeedTimeForBaby(baby) {
+  let latestTime = null;
+  let latestDate = null;
+  let latestTotalMinutes = -1;
+
+  const dates = Object.keys(sharedData).sort();
+  for (const date of dates) {
+    const logs = sharedData[date]?.[baby]?.logs || [];
+    for (const log of logs) {
+      const amt = parseInt(log.feedAmount);
+      if (amt > 0) {
+        const [h, m] = log.time.split(':').map(Number);
+        const totalMinutes = new Date(`${date}T00:00`).getTime() + h * 60 * 60 * 1000 + m * 60 * 1000;
+        if (totalMinutes > latestTotalMinutes) {
+          latestTime = log.time;
+          latestDate = date;
+          latestTotalMinutes = totalMinutes;
+        }
+      }
+    }
+  }
+
+  if (latestTime) {
+    setNextFeedTimeLabel(latestTime);
+  } else {
+    document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
+  }
+}
 
   if (latestTime) {
     setNextFeedTimeLabel(latestTime);
