@@ -289,8 +289,12 @@
   }
 
   async function saveSharedData() {
-    await docRef.set(sharedData, { merge: true });
+  if (Object.keys(sharedData).length === 0) {
+    await docRef.delete();  // Firestore 문서 전체 삭제
+  } else {
+    await docRef.set(sharedData, { merge: false }); // 완전히 덮어씀
   }
+}
 
   async function saveLog() {
     const date = document.getElementById('inputDate').value;
