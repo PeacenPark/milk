@@ -362,29 +362,50 @@
     const tbody = document.getElementById('logTable');
     tbody.innerHTML = '';
     let totalFeed = 0, poopCount = 0, peeCount = 0;
-    // 다음 수유 시간 표시 (모든 날짜 중 최근 수유 시간 기준)
-let latestFeed = null;
-const baby = document.getElementById('baby').value;
-
-Object.keys(sharedData).forEach(date => {
-  const logs = sharedData[date][baby]?.logs || [];
-  logs.forEach(log => {
-    const time = log.time;
-    const amount = parseInt(log.feedAmount);
-    if (amount > 0) {
-      const logDateTime = new Date(`${date}T${time}`);
-      if (!latestFeed || logDateTime > latestFeed.time) {
-        latestFeed = { time, date, full: logDateTime };
+    logs.forEach((entry, i) => {
+      const amt = parseInt(entry.feedAmount);
+      if (!isNaN(amt)) {
+        totalFeed += amt;
       }
-    }
-  });
-});
+      if (entry.poopType) poopCount++;
+      if (entry.pee) peeCount++;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${to12HourFormat(entry.time)}</td>
+        <td>${amt ? amt + 'mL' : '-'}</td>
+        <td>${entry.poopType || '-'}</td>
+        <td>${entry.pee ? 'O' : ''}</td>
+        <td>
+          <button onclick="editLog('${date}', '${baby}', ${i})">✏️</button>
+          <button onclick="deleteLog('${date}', '${baby}', ${i})">🗑</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    document.getElementById('dailySummaryBox').innerHTML =
+      `<strong>${date} ${baby} 통계</strong><br>
+       수유량: <span class="highlightFeed">${totalFeed}mL</span>,
+       대변 ${poopCount}회, 소변 ${peeCount}회` +
+      (note.weight ? `<br>체중: ${note.weight}kg` : '');
 
-if (latestFeed) {
-  setNextFeedTimeLabel(latestFeed.time);
-} else {
-  document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
-}
+    // 최신 수유 기록(전체 데이터 중) 기준 다음 수유시간 표시
+    let latestFeed = null;
+    Object.keys(sharedData).forEach(dateKey => {
+      const babyLogs = sharedData[dateKey][baby]?.logs || [];
+      babyLogs.forEach(log => {
+        const time = log.time;
+        const amount = parseInt(log.feedAmount);
+        if (amount > 0) {
+          const logDateTime = new Date(`${dateKey}T${time}`);
+          if (!latestFeed || logDateTime > latestFeed.full) {
+            latestFeed = { time, full: logDateTime };
+          }
+        }
+      });
+    });
+    if (latestFeed) setNextFeedTimeLabel(latestFeed.time);
+    else document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
+  }
+
   function updateDateSelect() {
     const select = document.getElementById('dateSelect');
     const dates = Object.keys(sharedData).sort().reverse();
