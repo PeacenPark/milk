@@ -388,10 +388,7 @@
        수유량: <span class="highlightFeed">${totalFeed}mL</span>,
        대변 ${poopCount}회, 소변 ${peeCount}회` +
       (note.weight ? `<br>체중: ${note.weight}kg` : '');
-    if (date === getTodayDate() && latestFeedTime)
-       setNextFeedTimeLabel(latestFeedTime);
-    else
-       document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
+    updateNextFeedTimeFromAllLogs();
     }
 
   function updateDateSelect() {
@@ -414,6 +411,33 @@
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // local timezone 반영
   return now.toISOString().split('T')[0];
+}
+
+function updateNextFeedTimeFromAllLogs() {
+  let latestDate = null;
+  let latestTime = null;
+
+  const dates = Object.keys(sharedData).sort().reverse();
+  for (const date of dates) {
+    for (const baby of Object.keys(sharedData[date])) {
+      const logs = sharedData[date][baby]?.logs || [];
+      for (const log of logs) {
+        const amt = parseInt(log.feedAmount);
+        if (amt > 0) {
+          if (!latestDate || new Date(`${date}T${log.time}`) > new Date(`${latestDate}T${latestTime}`)) {
+            latestDate = date;
+            latestTime = log.time;
+          }
+        }
+      }
+    }
+  }
+
+  if (latestTime) {
+    setNextFeedTimeLabel(latestTime);
+  } else {
+    document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
+  }
 }
 
   function drawChart() {
