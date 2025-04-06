@@ -278,15 +278,16 @@
   }
 
   function setNextFeedTimeLabel(timeStr) {
-  const [h, m] = timeStr.split(':').map(Number);
-  const totalMinutes = h * 60 + m + 210;
-  const nextH = Math.floor(totalMinutes / 60) % 24;
-  const nextM = totalMinutes % 60;
-  const nextTime = `${String(nextH).padStart(2, '0')}:${String(nextM).padStart(2, '0')}`;
-  const timeText = to12HourFormat(nextTime);
-  document.getElementById('nextFeedTime').innerHTML =
-    `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
-}
+    const [h, m] = timeStr.split(':').map(Number);
+    const dt = new Date();
+    dt.setHours(h);
+    dt.setMinutes(m + 210);
+    const hh = String(dt.getHours()).padStart(2, '0');
+    const mm = String(dt.getMinutes()).padStart(2, '0');
+    const timeText = to12HourFormat(`${hh}:${mm}`);
+    document.getElementById('nextFeedTime').innerHTML =
+      `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
+  }
 
   async function saveSharedData() {
     await docRef.set(sharedData, { merge: true });
@@ -387,7 +388,10 @@
        수유량: <span class="highlightFeed">${totalFeed}mL</span>,
        대변 ${poopCount}회, 소변 ${peeCount}회` +
       (note.weight ? `<br>체중: ${note.weight}kg` : '');
-    updateNextFeedTimeForBaby(baby);
+    if (date === getTodayDate() && latestFeedTime)
+       setNextFeedTimeLabel(latestFeedTime);
+    else
+       document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
     }
 
   function updateDateSelect() {
@@ -410,66 +414,6 @@
   const now = new Date();
   now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // local timezone 반영
   return now.toISOString().split('T')[0];
-}
-
-function updateNextFeedTimeFromAllLogs() {
-  let latestDate = null;
-  let latestTime = null;
-  let latestTotalMinutes = -1;
-
-  const dates = Object.keys(sharedData).sort();
-  for (const date of dates) {
-    for (const baby of Object.keys(sharedData[date])) {
-      const logs = sharedData[date][baby]?.logs || [];
-      for (const log of logs) {
-        const amt = parseInt(log.feedAmount);
-        if (amt > 0) {
-          const [h, m] = log.time.split(':').map(Number);
-          const totalMinutes = new Date(`${date}T00:00`).getTime() + h * 60 * 60 * 1000 + m * 60 * 1000;
-          if (totalMinutes > latestTotalMinutes) {
-            latestDate = date;
-            latestTime = log.time;
-            latestTotalMinutes = totalMinutes;
-          }
-        }
-      }
-    }
-  }
-  
-  function updateNextFeedTimeForBaby(baby) {
-  let latestTime = null;
-  let latestDate = null;
-  let latestTotalMinutes = -1;
-
-  const dates = Object.keys(sharedData).sort();
-  for (const date of dates) {
-    const logs = sharedData[date]?.[baby]?.logs || [];
-    for (const log of logs) {
-      const amt = parseInt(log.feedAmount);
-      if (amt > 0) {
-        const [h, m] = log.time.split(':').map(Number);
-        const totalMinutes = new Date(`${date}T00:00`).getTime() + h * 60 * 60 * 1000 + m * 60 * 1000;
-        if (totalMinutes > latestTotalMinutes) {
-          latestTime = log.time;
-          latestDate = date;
-          latestTotalMinutes = totalMinutes;
-        }
-      }
-    }
-  }
-
-  if (latestTime) {
-    setNextFeedTimeLabel(latestTime);
-  } else {
-    document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
-  }
-}
-
-  if (latestTime) {
-    setNextFeedTimeLabel(latestTime);
-  } else {
-    document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
-  }
 }
 
   function drawChart() {
