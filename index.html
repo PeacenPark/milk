@@ -433,7 +433,7 @@
     else document.getElementById('nextFeedTime').textContent = '다음 수유 시간: -';
   }
 
-  function updateDateSelect() {
+function updateDateSelect() {
   const select = document.getElementById('dateSelect');
   const dates = Object.keys(sharedData).sort().reverse();
   select.innerHTML = '';
@@ -450,26 +450,19 @@
   if (dates.length > 0) {
     select.value = dates[0];
 
-    const currentInput = document.getElementById('inputDate').value;
+    const inputDateEl = document.getElementById('inputDate');
+    const currentInput = inputDateEl.value;
 
-    // 현재 inputDate가 비어 있거나 오늘 이전일 때만 변경
-    if (!currentInput || currentInput < today) {
-      document.getElementById('inputDate').value = today;
+    // 현재 inputDate가 비어있거나, 오늘 날짜가 아닌 경우에만 설정
+    if (!currentInput || currentInput !== today) {
+      inputDateEl.value = today;
     }
   } else {
-    // sharedData 자체가 비어있을 경우
-    select.innerHTML = `<option value="${today}">${today}</option>`;
-    select.value = today;
-    document.getElementById('inputDate').value = today;
-  }
-}
-  if (dates.length > 0) {
-    select.value = dates[0];
-    document.getElementById('inputDate').value = dates[0];
-  } else {
-    // 기록이 하나도 없을 경우 오늘로 초기화
-    const today = getTodayDate();
-    select.innerHTML = `<option value="${today}">${today}</option>`;
+    // sharedData 자체가 없으면 오늘 날짜 기준으로 초기화
+    const opt = document.createElement('option');
+    opt.value = today;
+    opt.textContent = today;
+    select.appendChild(opt);
     select.value = today;
     document.getElementById('inputDate').value = today;
   }
