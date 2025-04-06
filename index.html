@@ -331,9 +331,23 @@
   }
 
   async function deleteLog(date, baby, index) {
-    sharedData[date][baby].logs.splice(index, 1);
-    await saveSharedData();
+  sharedData[date][baby].logs.splice(index, 1);
+
+  // 해당 아기의 로그가 모두 삭제됐는지 확인
+  const isBabyLogEmpty = sharedData[date][baby].logs.length === 0;
+  const isDailyEmpty = !sharedData[date][baby].daily || Object.keys(sharedData[date][baby].daily).length === 0;
+
+  if (isBabyLogEmpty && isDailyEmpty) {
+    delete sharedData[date][baby];
   }
+
+  // 해당 날짜에 다른 아기들도 로그/일지가 모두 없으면 날짜 자체 삭제
+  if (Object.keys(sharedData[date]).length === 0) {
+    delete sharedData[date];
+  }
+
+  await saveSharedData();
+}
 
   async function editLog(date, baby, index) {
     const log = sharedData[date][baby].logs[index];
@@ -406,20 +420,28 @@
   }
 
   function updateDateSelect() {
-    const select = document.getElementById('dateSelect');
-    const dates = Object.keys(sharedData).sort().reverse();
-    select.innerHTML = '';
-    dates.forEach(date => {
-      const opt = document.createElement('option');
-      opt.value = date;
-      opt.textContent = date;
-      select.appendChild(opt);
-    });
-    if (dates.length > 0) {
-      select.value = dates[0];
-      document.getElementById('inputDate').value = dates[0];
-    }
+  const select = document.getElementById('dateSelect');
+  const dates = Object.keys(sharedData).sort().reverse();
+  select.innerHTML = '';
+
+  dates.forEach(date => {
+    const opt = document.createElement('option');
+    opt.value = date;
+    opt.textContent = date;
+    select.appendChild(opt);
+  });
+
+  if (dates.length > 0) {
+    select.value = dates[0];
+    document.getElementById('inputDate').value = dates[0];
+  } else {
+    // 기록이 하나도 없을 경우 오늘로 초기화
+    const today = getTodayDate();
+    select.innerHTML = `<option value="${today}">${today}</option>`;
+    select.value = today;
+    document.getElementById('inputDate').value = today;
   }
+}
   
   function getTodayDate() {
   const now = new Date();
