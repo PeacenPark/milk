@@ -415,17 +415,21 @@
 function updateNextFeedTimeFromAllLogs() {
   let latestDate = null;
   let latestTime = null;
+  let latestTotalMinutes = -1;
 
-  const dates = Object.keys(sharedData).sort().reverse();
+  const dates = Object.keys(sharedData).sort();
   for (const date of dates) {
     for (const baby of Object.keys(sharedData[date])) {
       const logs = sharedData[date][baby]?.logs || [];
       for (const log of logs) {
         const amt = parseInt(log.feedAmount);
         if (amt > 0) {
-          if (!latestDate || new Date(`${date}T${log.time}`) > new Date(`${latestDate}T${latestTime}`)) {
+          const [h, m] = log.time.split(':').map(Number);
+          const totalMinutes = new Date(`${date}T00:00`).getTime() + h * 60 * 60 * 1000 + m * 60 * 1000;
+          if (totalMinutes > latestTotalMinutes) {
             latestDate = date;
             latestTime = log.time;
+            latestTotalMinutes = totalMinutes;
           }
         }
       }
