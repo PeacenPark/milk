@@ -262,7 +262,7 @@
   function updateDday() {
     const base = new Date("2025-01-06");
     const today = new Date();
-    const diff = Math.floor((today - base) / (1000 * 60 * 60 * 24));
+    const diff = Math.floor((today - base - 1) / (1000 * 60 * 60 * 24));
     document.getElementById('dday').textContent = `생후 ${diff}일`;
   }
 
