@@ -351,18 +351,19 @@
 }
 
   async function editLog(date, baby, index) {
-    const log = sharedData[date][baby].logs[index];
-    const newFeed = prompt("수유량 (mL)", log.feedAmount);
-    const newPoop = prompt("대변 상태", log.poopType || '');
-    const newPee = confirm("소변 있었나요?");
-    sharedData[date][baby].logs[index] = {
-      ...log,
-      feedAmount: parseInt(newFeed) || 0,
-      poopType: newPoop,
-      pee: newPee
-    };
-    await saveSharedData();
-  }
+  const log = sharedData[date][baby].logs[index];
+  const newFeed = prompt("수유량 (mL)", log.feedAmount);
+  const newPoop = prompt("대변 상태", log.poopType || '');
+  const newPee = confirm("소변 있었나요?");
+  sharedData[date][baby].logs[index] = {
+    ...log,
+    feedAmount: parseInt(newFeed) || 0,
+    poopType: newPoop,
+    pee: newPee
+  };
+  await saveSharedData();
+  loadLogs(); // 수정 후 화면 새로고침!
+}
 
   function loadLogs() {
     const date = document.getElementById('dateSelect').value;
