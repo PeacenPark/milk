@@ -537,57 +537,6 @@ function updateDateSelect() {
       }
     });
   }
-
-  async function downloadAllLogsAsPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    const dates = Object.keys(sharedData).sort();
-
-    let firstPage = true;
-    for (const date of dates) {
-      for (const baby of Object.keys(sharedData[date])) {
-        if (!firstPage) doc.addPage();
-        firstPage = false;
-
-        const { daily = {}, logs = [] } = sharedData[date][baby];
-        let y = 20;
-
-        doc.setFontSize(16);
-        doc.text(`${date} - ${baby} 수유일지`, 14, y);
-        y += 10;
-
-        doc.setFontSize(12);
-        if (daily.weight) doc.text(`몸무게: ${daily.weight}kg`, 14, y);
-        if (daily.temperature) doc.text(`체온: ${daily.temperature}℃`, 70, y);
-        if (daily.bathed) doc.text(`목욕: O`, 130, y);
-        y += 10;
-
-        if (daily.memo) {
-          const memoLines = doc.splitTextToSize(`메모: ${daily.memo}`, 180);
-          doc.text(memoLines, 14, y);
-          y += memoLines.length * 7;
-        }
-
-        doc.text("시간   | 수유량 | 대변 | 소변", 14, y); y += 8;
-        doc.setLineWidth(0.1);
-        doc.line(14, y, 196, y); y += 4;
-
-        let total = 0, poop = 0, pee = 0;
-        logs.forEach(log => {
-          const line = `${to12HourFormat(log.time)} | ${log.feedAmount || '-'}mL | ${log.poopType || '-'} | ${log.pee ? 'O' : '-'}`;
-          doc.text(line, 14, y); y += 7;
-          total += log.feedAmount || 0;
-          if (log.poopType) poop++;
-          if (log.pee) pee++;
-        });
-
-        y += 4;
-        doc.text(`총 수유량: ${total}mL / 대변 ${poop}회 / 소변 ${pee}회`, 14, y);
-      }
-    }
-
-    doc.save("수유일지_백업.pdf");
-  }
 </script>
 </body>
 </html>
