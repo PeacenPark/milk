@@ -477,66 +477,92 @@ function updateDateSelect() {
 }
 
   function drawChart() {
-    const baby = document.getElementById('baby').value;
-    const dateList = Object.keys(sharedData).sort();
-    const feedTotals = [], weightData = [];
-    dateList.forEach(date => {
-      const logs = sharedData[date][baby]?.logs || [];
-      const daily = sharedData[date][baby]?.daily || {};
-      const total = logs.reduce((sum, l) => {
-        const v = parseInt(l.feedAmount);
-        return isNaN(v) ? sum : sum + v;
-      }, 0);
-      feedTotals.push(total);
-      weightData.push(daily.weight ?? null);
-    });
-    const ctx = document.getElementById('feedChart').getContext('2d');
-    if (window.chartInstance) window.chartInstance.destroy();
-    window.chartInstance = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: dateList,
-        datasets: [
-          {
-            label: `${baby} 수유량 (mL)`,
-            data: feedTotals,
-            borderColor: 'rgba(75,192,192,1)',
-            backgroundColor: 'rgba(75,192,192,0.2)',
-            yAxisID: 'y1',
-            tension: 0.3
-          },
-          {
-            label: `${baby} 체중 (kg)`,
-            data: weightData,
-            borderColor: 'rgba(255,99,132,1)',
-            backgroundColor: 'rgba(255,99,132,0.2)',
-            yAxisID: 'y2',
-            tension: 0.3
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        interaction: { mode: 'index', intersect: false },
-        stacked: false,
-        scales: {
-          y1: {
-            type: 'linear',
-            position: 'left',
-            title: { display: true, text: '수유량 (mL)' },
-            beginAtZero: true
-          },
-          y2: {
-            type: 'linear',
-            position: 'right',
-            title: { display: true, text: '체중 (kg)' },
-            beginAtZero: false,
-            grid: { drawOnChartArea: false }
-          }
+  const baby = document.getElementById('baby').value;
+  const dateList = Object.keys(sharedData).sort();
+  const feedTotals = [], weightData = [];
+
+  dateList.forEach(date => {
+    const logs = sharedData[date][baby]?.logs || [];
+    const daily = sharedData[date][baby]?.daily || {};
+    const total = logs.reduce((sum, l) => {
+      const v = parseInt(l.feedAmount);
+      return isNaN(v) ? sum : sum + v;
+    }, 0);
+    feedTotals.push(total);
+    weightData.push(daily.weight ?? null); // null이면 spanGaps로 연결됨
+  });
+
+  const ctx = document.getElementById('feedChart').getContext('2d');
+  if (window.chartInstance) window.chartInstance.destroy();
+
+  window.chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dateList,
+      datasets: [
+        {
+          label: `${baby} 수유량 (mL)`,
+          data: feedTotals,
+          borderColor: 'rgba(75,192,192,1)',
+          backgroundColor: 'rgba(75,192,192,0.2)',
+          yAxisID: 'y1',
+          tension: 0.3,
+          spanGaps: true
+        },
+        {
+          label: `${baby} 체중 (kg)`,
+          data: weightData,
+          borderColor: 'rgba(255,99,132,1)',
+          backgroundColor: 'rgba(255,99,132,0.2)',
+          yAxisID: 'y2',
+          tension: 0.3,
+          spanGaps: true
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      stacked: false,
+      scales: {
+        y1: {
+          type: 'linear',
+          position: 'left',
+          title: { display: true, text: '수유량 (mL)' },
+          beginAtZero: true
+        },
+        y2: {
+          type: 'linear',
+          position: 'right',
+          title: { display: true, text: '체중 (kg)' },
+          beginAtZero: false,
+          grid: { drawOnChartArea: false }
         }
       }
-    });
-  }
+    }
+  });
+
+  // 최근 30일 평균 수유량 계산
+  const now = new Date();
+  let recentSum = 0;
+  let recentDays = 0;
+
+  dateList.forEach((date, i) => {
+    const dateObj = new Date(date);
+    const diffDays = (now - dateObj) / (1000 * 60 * 60 * 24);
+    if (diffDays <= 30) {
+      const amt = feedTotals[i];
+      if (amt > 0) {
+        recentSum += amt;
+        recentDays++;
+      }
+    }
+  });
+
+  const avg = recentDays > 0 ? Math.round(recentSum / recentDays) : 0;
+  const summaryBox = document.getElementById('dailySummaryBox');
+  summaryBox.innerHTML += `<br><strong>최근 ${recentDays}일 평균 수유량:</strong> ${avg}mL`;
+}
 </script>
 </body>
 </html>
