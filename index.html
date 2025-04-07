@@ -162,6 +162,7 @@
       <input type="time" id="time">
     </div>
 
+<div class="row">
     <select id="feedAmount">
       <option value="" selected>수유량 (mL)</option>
       <option value="30">30 mL</option>
@@ -184,7 +185,18 @@
       <option value="200">200 mL</option>
     </select>
     
-    <input type="number" id="feedInterval" min="30" max="600" value="210" placeholder="수유텀 (분)" />
+  <select id="feedInterval">
+    <option value="120">2시간</option>
+    <option value="150">2시간 30분</option>
+    <option value="180">3시간</option>
+    <option value="210" selected>3시간 30분</option>
+    <option value="240">4시간</option>
+    <option value="270">4시간 30분</option>
+    <option value="300">5시간</option>
+    <option value="330">5시간 30분</option>
+    <option value="360">6시간</option>
+  </select>
+</div>
 
     <select id="poopType">
       <option value="">대변</option>
@@ -252,15 +264,13 @@
     });
     selectBaby('박 온');
     
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('feedInterval').addEventListener('change', () => {
-        const baby = document.getElementById('baby').value;
-        const val = parseInt(document.getElementById('feedInterval').value);
-        if (!isNaN(val) && val >= 30 && val <= 600) {
-          feedIntervals[baby] = val;
-        }
-      });
-    });
+    document.getElementById('feedInterval').addEventListener('change', () => {
+  const baby = document.getElementById('baby').value;
+  const val = parseInt(document.getElementById('feedInterval').value);
+  if (!isNaN(val)) {
+    feedIntervals[baby] = val;
+  }
+});
   }
 
   function getNowTime() {
@@ -304,16 +314,20 @@
 
   const baby = document.getElementById('baby').value;
   const interval = feedIntervals[baby] || 210;
-
   dt.setMinutes(dt.getMinutes() + interval);
 
   const hh = String(dt.getHours()).padStart(2, '0');
   const mm = String(dt.getMinutes()).padStart(2, '0');
   const timeText = to12HourFormat(`${hh}:${mm}`);
 
+  // 시간 텍스트도 "3시간 30분" 같이 표기
+  const hours = Math.floor(interval / 60);
+  const minutes = interval % 60;
+  const intervalText = minutes > 0 ? `${hours}시간 ${minutes}분` : `${hours}시간`;
+
   document.getElementById('nextFeedTime').innerHTML =
-    `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
-  }
+    `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span> <span style="font-size:18px;">(${intervalText} 후)</span>`;
+}
 
   async function saveSharedData() {
   if (Object.keys(sharedData).length === 0) {
