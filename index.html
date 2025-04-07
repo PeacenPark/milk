@@ -183,6 +183,8 @@
       <option value="190">190 mL</option>
       <option value="200">200 mL</option>
     </select>
+    
+    <input type="number" id="feedInterval" min="30" max="600" value="210" placeholder="수유텀 (분)" />
 
     <select id="poopType">
       <option value="">대변</option>
@@ -232,6 +234,10 @@
   const db = firebase.firestore();
   const docRef = db.collection("logs").doc("shared-log");
   let sharedData = {};
+  let feedIntervals = {
+  "박 온": 210,
+  "박 겸": 210
+  };
 
   function initApp() {
     const today = getTodayDate();
@@ -245,6 +251,16 @@
       drawChart();
     });
     selectBaby('박 온');
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('feedInterval').addEventListener('change', () => {
+        const baby = document.getElementById('baby').value;
+        const val = parseInt(document.getElementById('feedInterval').value);
+        if (!isNaN(val) && val >= 30 && val <= 600) {
+          feedIntervals[baby] = val;
+        }
+      });
+    });
   }
 
   function getNowTime() {
@@ -267,25 +283,36 @@
   }
 
   function selectBaby(name) {
-    document.getElementById('baby').value = name;
-    document.getElementById('selectedBabyName').textContent = name;
-    document.getElementById('babyImage').src = name === '박 온' ? 'IMG_1186.png' : 'IMG_1185.png';
-    document.getElementById('btnOn').classList.toggle('selected', name === '박 온');
-    document.getElementById('btnGyeom').classList.toggle('selected', name === '박 겸');
-    loadLogs();
-    drawChart();
-  }
+  document.getElementById('baby').value = name;
+  document.getElementById('selectedBabyName').textContent = name;
+  document.getElementById('babyImage').src = name === '박 온' ? 'IMG_1186.png' : 'IMG_1185.png';
+  document.getElementById('btnOn').classList.toggle('selected', name === '박 온');
+  document.getElementById('btnGyeom').classList.toggle('selected', name === '박 겸');
+  
+  // 수유텀 반영
+  document.getElementById('feedInterval').value = feedIntervals[name];
+
+  loadLogs();
+  drawChart();
+}
 
   function setNextFeedTimeLabel(timeStr) {
-    const [h, m] = timeStr.split(':').map(Number);
-    const dt = new Date();
-    dt.setHours(h);
-    dt.setMinutes(m + 210);
-    const hh = String(dt.getHours()).padStart(2, '0');
-    const mm = String(dt.getMinutes()).padStart(2, '0');
-    const timeText = to12HourFormat(`${hh}:${mm}`);
-    document.getElementById('nextFeedTime').innerHTML =
-      `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
+  const [h, m] = timeStr.split(':').map(Number);
+  const dt = new Date();
+  dt.setHours(h);
+  dt.setMinutes(m);
+
+  const baby = document.getElementById('baby').value;
+  const interval = feedIntervals[baby] || 210;
+
+  dt.setMinutes(dt.getMinutes() + interval);
+
+  const hh = String(dt.getHours()).padStart(2, '0');
+  const mm = String(dt.getMinutes()).padStart(2, '0');
+  const timeText = to12HourFormat(`${hh}:${mm}`);
+
+  document.getElementById('nextFeedTime').innerHTML =
+    `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
   }
 
   async function saveSharedData() {
