@@ -18,7 +18,7 @@
     }
     header {
       display: flex;
-      justify-content: space-between;
+           justify-content: space-between;
       align-items: center;
       padding: 20px;
       background: white;
@@ -247,7 +247,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const docRef = db.collection("logs").doc("shared-log");
 let sharedData = {};
-let feedInterval = 210; // 기본 수유텀
+let feedInterval = 210;
 
 function initApp() {
   const today = getTodayDate();
@@ -263,10 +263,7 @@ function initApp() {
 
 function getTodayDate() {
   const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
 function getNowTime() {
@@ -295,6 +292,7 @@ function selectBaby(name) {
   document.getElementById('btnOn').classList.toggle('selected', name === '박 온');
   document.getElementById('btnGyeom').classList.toggle('selected', name === '박 겸');
 
+  // 아기별 수유텀 불러오기
   if (sharedData.settings && sharedData.settings[name]) {
     feedInterval = sharedData.settings[name].interval;
     document.getElementById('intervalSelect').value = feedInterval.toString();
@@ -321,23 +319,25 @@ function setNextFeedTimeLabel(timeStr) {
 }
 
 function updateFeedInterval() {
-  const val = parseInt(document.getElementById('intervalSelect').value);
+  const val = Number(document.getElementById('intervalSelect').value);
   feedInterval = isNaN(val) ? 210 : val;
   const baby = document.getElementById('baby').value;
+
   if (!sharedData.settings) sharedData.settings = {};
   sharedData.settings[baby] = { interval: feedInterval };
   saveSharedData();
+
   updateNextFeedTime(baby);
 }
 
 function updateNextFeedTime(baby) {
   let latestFeed = null;
   Object.keys(sharedData).forEach(dateKey => {
-    if (dateKey === 'settings') return; // 날짜가 아닌 항목 제외
+    if (dateKey === 'settings') return;
     const babyLogs = sharedData[dateKey][baby]?.logs || [];
     babyLogs.forEach(log => {
       const time = log.time;
-      const amount = Number(log.feedAmount); // ✅ parseInt → Number 사용 권장
+      const amount = Number(log.feedAmount);
       if (amount > 0) {
         const logDateTime = new Date(`${dateKey}T${time}`);
         if (!latestFeed || logDateTime > latestFeed.full) {
@@ -346,12 +346,8 @@ function updateNextFeedTime(baby) {
       }
     });
   });
-
-  if (latestFeed) {
-    setNextFeedTimeLabel(latestFeed.time);
-  } else {
-    document.querySelector('#nextFeedTime .feedTimeHighlight').textContent = '-';
-  }
+  if (latestFeed) setNextFeedTimeLabel(latestFeed.time);
+  else document.querySelector('#nextFeedTime .feedTimeHighlight').textContent = '-';
 }
 
 async function saveSharedData() {
@@ -362,6 +358,7 @@ async function saveSharedData() {
   }
 }
 </script>
+
 <script>
 async function saveLog() {
   const date = document.getElementById('inputDate').value;
@@ -387,10 +384,7 @@ async function saveLog() {
   document.getElementById('inputDate').value = getTodayDate();
   document.getElementById('time').value = getNowTime();
 
-  if (date === getTodayDate() && feedAmount > 0) {
-    setNextFeedTimeLabel(time);
-  }
-
+  updateNextFeedTime(baby);
   loadLogs();
 }
 
@@ -401,10 +395,13 @@ async function saveDailyNote() {
   const temperature = parseFloat(document.getElementById('temperature').value) || null;
   const bathed = document.getElementById('bathed').checked;
   const memo = document.getElementById('memo').value;
+
   if (!sharedData[date]) sharedData[date] = {};
-  if (!sharedData[date][baby]) sharedData[date][baby] = { logs: [], daily: {} };
+  if (!sharedData[date][baby]) sharedData[date][baby] = { logs: [], daily:
+    {} };
   sharedData[date][baby].daily = { weight, temperature, bathed, memo };
   await saveSharedData();
+  loadLogs();
 }
 
 async function deleteLog(date, baby, index) {
@@ -426,7 +423,7 @@ async function editLog(date, baby, index) {
   const newPee = confirm("소변 있었나요?");
   sharedData[date][baby].logs[index] = {
     ...log,
-    feedAmount: parseInt(newFeed) || 0,
+    feedAmount: Number(newFeed) || 0,
     poopType: newPoop,
     pee: newPee
   };
@@ -440,15 +437,18 @@ function loadLogs() {
   const logs = (sharedData[date] && sharedData[date][baby]?.logs) || [];
   const note = (sharedData[date] && sharedData[date][baby]?.daily) || {};
   logs.sort((a, b) => new Date(`${date}T${b.time}`) - new Date(`${date}T${a.time}`));
+
   document.getElementById('weight').value = note.weight || '';
   document.getElementById('temperature').value = note.temperature || '';
   document.getElementById('bathed').checked = note.bathed || false;
   document.getElementById('memo').value = note.memo || '';
+
   const tbody = document.getElementById('logTable');
   tbody.innerHTML = '';
   let totalFeed = 0, poopCount = 0, peeCount = 0;
+
   logs.forEach((entry, i) => {
-    const amt = parseInt(entry.feedAmount);
+    const amt = Number(entry.feedAmount);
     if (!isNaN(amt)) totalFeed += amt;
     if (entry.poopType) poopCount++;
     if (entry.pee) peeCount++;
@@ -464,6 +464,7 @@ function loadLogs() {
       </td>`;
     tbody.appendChild(tr);
   });
+
   document.getElementById('dailySummaryBox').innerHTML =
     `<strong>${date} ${baby} 통계</strong><br>
      수유량: <span class="highlightFeed">${totalFeed}mL</span>,
@@ -477,9 +478,7 @@ function updateDateSelect() {
   const select = document.getElementById('dateSelect');
   const dates = Object.keys(sharedData)
     .filter(key => key !== 'settings')  // settings 제외
-    .sort()
-    .reverse();
-
+    .sort().reverse();
   select.innerHTML = '';
   dates.forEach(date => {
     const opt = document.createElement('option');
@@ -506,20 +505,25 @@ function updateDateSelect() {
 
 function drawChart() {
   const baby = document.getElementById('baby').value;
-  const dateList = Object.keys(sharedData).sort();
+  const dateList = Object.keys(sharedData)
+    .filter(key => key !== 'settings')
+    .sort();
   const feedTotals = [], weightData = [];
+
   dateList.forEach(date => {
     const logs = sharedData[date][baby]?.logs || [];
     const daily = sharedData[date][baby]?.daily || {};
     const total = logs.reduce((sum, l) => {
-      const v = parseInt(l.feedAmount);
+      const v = Number(l.feedAmount);
       return isNaN(v) ? sum : sum + v;
     }, 0);
     feedTotals.push(total);
     weightData.push(daily.weight ?? null);
   });
+
   const ctx = document.getElementById('feedChart').getContext('2d');
   if (window.chartInstance) window.chartInstance.destroy();
+
   window.chartInstance = new Chart(ctx, {
     type: 'line',
     data: {
