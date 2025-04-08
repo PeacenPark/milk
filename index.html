@@ -155,7 +155,26 @@
     <option value="박 겸">박 겸</option>
   </select>
 
-  <table id="infoTable"><tr><td><span id="nextFeedTime">다음 수유 시간: -</span></td></tr></table>
+<table id="infoTable">
+  <tr>
+    <td>
+      <span id="nextFeedTime">
+        다음 수유 시간: <span class="feedTimeHighlight">-</span>
+        (<select id="intervalSelect" onchange="updateFeedInterval()" style="font-size:20px; margin-left:5px;">
+          <option value="120">2시간</option>
+          <option value="150">2시간 30분</option>
+          <option value="180">3시간</option>
+          <option value="210" selected>3시간 30분</option>
+          <option value="240">4시간</option>
+          <option value="270">4시간 30분</option>
+          <option value="300">5시간</option>
+          <option value="330">5시간 30분</option>
+          <option value="360">6시간</option>
+        </select>)
+      </span>
+    </td>
+  </tr>
+</table>
     <div style="max-width: 1200px; margin: auto; padding: 20px;">
     <div class="row">
       <input type="date" id="inputDate">
@@ -232,6 +251,7 @@
   const db = firebase.firestore();
   const docRef = db.collection("logs").doc("shared-log");
   let sharedData = {};
+  let feedInterval = 210; // 기본값: 3시간 30분
 
   function initApp() {
     const today = getTodayDate();
@@ -266,27 +286,38 @@
     document.getElementById('dday').textContent = `생후 ${diff}일`;
   }
 
-  function selectBaby(name) {
-    document.getElementById('baby').value = name;
-    document.getElementById('selectedBabyName').textContent = name;
-    document.getElementById('babyImage').src = name === '박 온' ? 'IMG_1186.png' : 'IMG_1185.png';
-    document.getElementById('btnOn').classList.toggle('selected', name === '박 온');
-    document.getElementById('btnGyeom').classList.toggle('selected', name === '박 겸');
-    loadLogs();
-    drawChart();
+function selectBaby(name) {
+  document.getElementById('baby').value = name;
+  document.getElementById('selectedBabyName').textContent = name;
+  document.getElementById('babyImage').src = name === '박 온' ? 'IMG_1186.png' : 'IMG_1185.png';
+  document.getElementById('btnOn').classList.toggle('selected', name === '박 온');
+  document.getElementById('btnGyeom').classList.toggle('selected', name === '박 겸');
+
+  // ✅ 수유텀 설정값 불러오기
+  if (sharedData.settings && sharedData.settings[name]) {
+    feedInterval = sharedData.settings[name].interval;
+    document.getElementById('intervalSelect').value = feedInterval.toString();
+  } else {
+    feedInterval = 210;
+    document.getElementById('intervalSelect').value = '210';
   }
 
+  loadLogs();
+  drawChart();
+}
+
   function setNextFeedTimeLabel(timeStr) {
-    const [h, m] = timeStr.split(':').map(Number);
-    const dt = new Date();
-    dt.setHours(h);
-    dt.setMinutes(m + 210);
-    const hh = String(dt.getHours()).padStart(2, '0');
-    const mm = String(dt.getMinutes()).padStart(2, '0');
-    const timeText = to12HourFormat(`${hh}:${mm}`);
-    document.getElementById('nextFeedTime').innerHTML =
-      `다음 수유 시간: <span class="feedTimeHighlight">${timeText}</span>`;
-  }
+  const [h, m] = timeStr.split(':').map(Number);
+  const dt = new Date();
+  dt.setHours(h);
+  dt.setMinutes(m);
+  dt.setMinutes(dt.getMinutes() + feedInterval); // ✅ 수유텀 반영
+
+  const hh = String(dt.getHours()).padStart(2, '0');
+  const mm = String(dt.getMinutes()).padStart(2, '0');
+  const timeText = to12HourFormat(`${hh}:${mm}`);
+  document.querySelector('#nextFeedTime .feedTimeHighlight').textContent = timeText;
+}
 
   async function saveSharedData() {
   if (Object.keys(sharedData).length === 0) {
@@ -474,6 +505,37 @@ function updateDateSelect() {
   const mm = String(now.getMonth() + 1).padStart(2, '0');
   const dd = String(now.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+}
+
+  function updateFeedInterval() {
+  const val = parseInt(document.getElementById('intervalSelect').value);
+  feedInterval = isNaN(val) ? 210 : val;
+
+  const baby = document.getElementById('baby').value;
+
+  // ✅ 아기별 수유텀 저장
+  if (!sharedData.settings) sharedData.settings = {};
+  sharedData.settings[baby] = { interval: feedInterval };
+
+  saveSharedData();
+
+  // ✅ 최신 수유 기록으로 다음 수유 시간 갱신
+  let latestFeed = null;
+  Object.keys(sharedData).forEach(dateKey => {
+    const babyLogs = sharedData[dateKey][baby]?.logs || [];
+    babyLogs.forEach(log => {
+      const time = log.time;
+      const amount = parseInt(log.feedAmount);
+      if (amount > 0) {
+        const logDateTime = new Date(`${dateKey}T${time}`);
+        if (!latestFeed || logDateTime > latestFeed.full) {
+          latestFeed = { time, full: logDateTime };
+        }
+      }
+    });
+  });
+
+  if (latestFeed) setNextFeedTimeLabel(latestFeed.time);
 }
 
   function drawChart() {
