@@ -333,10 +333,11 @@ function updateFeedInterval() {
 function updateNextFeedTime(baby) {
   let latestFeed = null;
   Object.keys(sharedData).forEach(dateKey => {
+    if (dateKey === 'settings') return; // 날짜가 아닌 항목 제외
     const babyLogs = sharedData[dateKey][baby]?.logs || [];
     babyLogs.forEach(log => {
       const time = log.time;
-      const amount = parseInt(log.feedAmount);
+      const amount = Number(log.feedAmount); // ✅ parseInt → Number 사용 권장
       if (amount > 0) {
         const logDateTime = new Date(`${dateKey}T${time}`);
         if (!latestFeed || logDateTime > latestFeed.full) {
@@ -345,6 +346,7 @@ function updateNextFeedTime(baby) {
       }
     });
   });
+
   if (latestFeed) {
     setNextFeedTimeLabel(latestFeed.time);
   } else {
@@ -365,7 +367,7 @@ async function saveLog() {
   const date = document.getElementById('inputDate').value;
   const time = document.getElementById('time').value;
   const baby = document.getElementById('baby').value;
-  const feedAmount = parseInt(document.getElementById('feedAmount').value) || 0;
+  const feedAmount = Number(document.getElementById('feedAmount').value) || 0;
   const poopType = document.getElementById('poopType').value;
   const pee = document.getElementById('pee').checked;
 
@@ -473,7 +475,11 @@ function loadLogs() {
 
 function updateDateSelect() {
   const select = document.getElementById('dateSelect');
-  const dates = Object.keys(sharedData).sort().reverse();
+  const dates = Object.keys(sharedData)
+    .filter(key => key !== 'settings')  // settings 제외
+    .sort()
+    .reverse();
+
   select.innerHTML = '';
   dates.forEach(date => {
     const opt = document.createElement('option');
@@ -481,6 +487,7 @@ function updateDateSelect() {
     opt.textContent = date;
     select.appendChild(opt);
   });
+
   const today = getTodayDate();
   if (dates.length > 0) {
     select.value = dates[0];
